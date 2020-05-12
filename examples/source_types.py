@@ -4,55 +4,81 @@
 
 '''
 
-from pyod import SourceCollection, Path
+import numpy as np
+import pathlib
 
-eg_str = '=== Testing "{}" source ==='
-
-print(eg_str.format('RAM'))
-
-data = [{
-    'data': np.array([]),
-    'meta': {},
-    'index': 42,
-},
-{
-    'data': np.array([]),
-    'meta': {},
-    'index': 43,
-}
-]
-
-paths = Path.from_list(data, 'ram')
-
-for path in paths:
-    print(path)
-
-sources = SourceCollection(paths = paths)
-sources.details()
+from pyod import SourceCollection, SourcePath
 
 
-print('='*len(eg_str.format('RAM')))
-print(eg_str.format('tdm + oem folder search'))
+data_dir = '.' / pathlib.Path(__file__).parents[0] / 'example_data'
 
 
-paths = Path.recursive_folder('./tests/tmp_test_data/test_sim/master', ['tdm', 'oem'])
+def example_wrapper(text):
+    def genereated_wrapper(func):
+        def display_example(*args, **kwargs):
+            eg_str = '=== Example: {} ==='.format(text)
+            print('='*len(eg_str))
+            print(eg_str)
+            print('='*len(eg_str))
 
-print('RECURSIVE')
-for path in paths:
-    print(path)
+            ret = func(*args, **kwargs)
+
+            print('='*len(eg_str) + '\n')
+
+            return ret
+        return display_example
+    return genereated_wrapper
+
+@example_wrapper('Loading sources from RAM')
+def example_ram_data():
+    data = [{
+            'data': np.array([]),
+            'meta': {},
+            'index': 42,
+        },
+        {
+            'data': np.array([]),
+            'meta': {},
+            'index': 43,
+        }
+    ]
+
+    paths = SourcePath.from_list(data, 'ram')
+
+    for path in paths:
+        print(path)
+
+    sources = SourceCollection(paths = paths)
+    sources.details()
 
 
-print('='*len(eg_str.format('tdm + oem folder search')))
-print(eg_str.format('glob file search'))
+
+@example_wrapper('Parsing folders recursively for data files')
+def example_recursive_file_find():
+
+    paths = SourcePath.recursive_folder(data_dir, ['tdm', 'oem'])
+
+    for path in paths:
+        print(path)
 
 
-path_pri = './tests/tmp_test_data/test_sim/master/prior'
-paths = Path.from_glob(path_pri)
+@example_wrapper('Using glob to find data files')
+def example_glob_file_find():
 
-print('SINGLE GLOB')
-for path in paths:
-    print(path)
+    paths = SourcePath.from_glob(data_dir / '*.oem')
 
-sources = SourceCollection(paths = paths)
-sources.details()
+    for path in paths:
+        print(path)
 
+
+@example_wrapper('Using glob to create a source collection')
+def example_glob_load():
+    sources = SourceCollection(paths = SourcePath.from_glob(data_dir / '*'))
+    sources.details()
+
+
+if __name__ == '__main__':
+    example_ram_data()
+    example_recursive_file_find()
+    example_glob_file_find()
+    example_glob_load()
