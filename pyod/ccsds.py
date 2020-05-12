@@ -109,7 +109,7 @@ def read_ccsds(fname):
         ('date', 'datetime64[us]'),
     ]
 
-    data_len = len(data_raw[data_raw.keys()[0]])
+    data_len = len(data_raw[list(data_raw.keys())[0]])
 
     for name in data_raw:
         _dtype.append( (name, 'float64') )

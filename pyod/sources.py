@@ -68,7 +68,7 @@ class ObservationSource(object):
         avalible_data = [dt[0] for dt in self.dtype]
         model_args = Model.REQUIRED_DATA
 
-        given_data = kwargs.keys()
+        given_data = list(kwargs.keys())
         model_data = {}
 
         for arg in model_args:
@@ -425,7 +425,7 @@ class SourcePath(object):
     def from_glob(glob_arg):
         if isinstance(glob_arg, pathlib.Path):
             glob_arg = str(glob_arg)
-        
+
         return [SourcePath(str_path, 'file') for str_path in glob.glob(glob_arg)]
 
 
