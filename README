@@ -1,0 +1,52 @@
+DASST
+=========
+
+feature list
+-------------
+
+* stuff
+
+simple example
+---------------
+
+
+.. code-block:python
+
+   import pyod
+
+
+to test
+-----------------
+
+.. code-block:bash
+
+   pytest
+
+
+
+to make doc
+-----------------
+
+.. code-block:bash
+
+   cd doc; make html
+
+
+
+to install
+-----------------
+
+.. code-block:bash
+
+   pip install pyod
+
+
+
+to pay respects
+-----------------
+
+@article{
+autor="Daniel Kastinen",
+title=""
+}
+
