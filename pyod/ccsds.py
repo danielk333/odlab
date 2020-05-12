@@ -5,8 +5,15 @@
 https://public.ccsds.org/Pubs/503x0b1c1.pdf
 '''
 
+#Python standard import
+
+#Third party import
 import numpy as np
 import scipy.constants as consts
+
+#Local import
+
+
 
 def read_oem(fname):
     meta = {'COMMENT': ''}

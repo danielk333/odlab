@@ -4,17 +4,21 @@
 
 '''
 
+#Python standard import
 import os
 import copy
 import glob
 import pathlib
 
+#Third party import
 import scipy
 import numpy as np
 import h5py
 
+#Local import
 from . import datetime as internal_datetime
 from . import ccsds
+
 
 _ptypes = [
     'file',
