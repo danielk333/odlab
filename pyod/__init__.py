@@ -4,9 +4,9 @@
 
 '''
 
-from .sources import SourceCollection, Path
+from .sources import SourceCollection, SourcePath
 
 __all__ = [
     'SourceCollection',
-    'Path',
+    'SourcePath',
 ]

@@ -7,6 +7,7 @@
 import os
 import copy
 import glob
+import pathlib
 
 import scipy
 import numpy as np
@@ -117,7 +118,7 @@ class SimulatedTrackletSource(TrackletSource):
     def accept(path):
         '''Verify that the path can be loaded by this source handler
         '''
-        if not isinstance(path, Path):
+        if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'ram':
@@ -169,7 +170,7 @@ class SimulatedStateSource(StateSource):
     def accept(path):
         '''Verify that the path can be loaded by this source handler
         '''
-        if not isinstance(path, Path):
+        if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'ram':
@@ -190,7 +191,7 @@ class TrackingDataMessageSource(TrackletSource):
     def __init__(self, path, **kwargs):
         super(TrackingDataMessageSource, self).__init__(path, **kwargs)
 
-        if not isinstance(path, Path):
+        if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         if not TrackingDataMessageSource.accept(path):
             raise TypeError('{} cannot load path of type "{}"'.format(TrackingDataMessageSource.__name__, path.ptype))
@@ -200,7 +201,7 @@ class TrackingDataMessageSource(TrackletSource):
     def accept(path):
         '''Verify that the path can be loaded by this source handler
         '''
-        if not isinstance(path, Path):
+        if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'file':
@@ -259,7 +260,7 @@ class HDFSTrackletSource(TrackletSource):
     def __init__(self, path, **kwargs):
         super(HDFSTrackletSource, self).__init__(path, **kwargs)
 
-        if not isinstance(path, Path):
+        if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         if not HDFSTrackletSource.accept(path):
             raise TypeError('{} cannot load path of type "{}"'.format(HDFSTrackletSource.__name__, path.ptype))
@@ -269,7 +270,7 @@ class HDFSTrackletSource(TrackletSource):
     def accept(path):
         '''Verify that the path can be loaded by this source handler
         '''
-        if not isinstance(path, Path):
+        if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'file':
@@ -314,7 +315,7 @@ class TwoLineElementSource(StateSource):
 
         super(TwoLineElementSource, self).__init__(path, **kwargs)
 
-        if not isinstance(path, Path):
+        if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         if not TwoLineElementSource.accept(path):
             raise TypeError('{} cannot load path of type "{}"'.format(TwoLineElementSource.__name__, path.ptype))
@@ -328,7 +329,7 @@ class OrbitEphemerisMessageSource(StateSource):
     def __init__(self, path, **kwargs):
         super(OrbitEphemerisMessageSource, self).__init__(path, **kwargs)
 
-        if not isinstance(path, Path):
+        if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         if not OrbitEphemerisMessageSource.accept(path):
             raise TypeError('{} cannot load path of type "{}"'.format(OrbitEphemerisMessageSource.__name__, path.ptype))
@@ -338,7 +339,7 @@ class OrbitEphemerisMessageSource(StateSource):
     def accept(path):
         '''Verify that the path can be loaded by this source handler
         '''
-        if not isinstance(path, Path):
+        if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'file':
@@ -377,7 +378,7 @@ class OrbitEphemerisMessageSource(StateSource):
         self.data = data
 
 
-class Path(object):
+class SourcePath(object):
     def __init__(self, data, ptype):
         if not ptype in _ptypes:
             raise TypeError('ptype "{}" not recognized'.format(ptype))
@@ -395,6 +396,9 @@ class Path(object):
 
     @staticmethod
     def recursive_folder(folder, exts):
+        if isinstance(folder, pathlib.Path):
+            folder = str(folder)
+
         paths = []
         if folder[-1] == '/':
             _folder = folder[:-1]
@@ -404,29 +408,25 @@ class Path(object):
         lst = glob.glob(_folder + '/*')
         for pth in lst:
             if os.path.isdir(pth):
-                paths += Path.recursive_folder(pth, exts)
+                paths += SourcePath.recursive_folder(pth, exts)
             elif os.path.isfile(pth):
                 _ext = pth.split(os.path.sep)[-1].split('.')[-1].lower()
                 if _ext in exts:
-                    paths.append(Path(pth, 'file'))
+                    paths.append(SourcePath(pth, 'file'))
         return paths
 
 
     @staticmethod
     def from_list(input_list, ptype):
-        return [Path(data, ptype) for data in input_list]
+        return [SourcePath(data, ptype) for data in input_list]
 
 
     @staticmethod
-    def from_glob(folder, ext = None):
-        _folder = folder
-        if _folder[-1] == os.path.sep:
-            _folder = folder[:-1]
-        if ext is not None:
-            _ext = '.' + ext
-        else:
-            _ext = ''
-        return [Path(str_path, 'file') for str_path in glob.glob(folder + '/*' + _ext)]
+    def from_glob(glob_arg):
+        if isinstance(glob_arg, pathlib.Path):
+            glob_arg = str(glob_arg)
+        
+        return [SourcePath(str_path, 'file') for str_path in glob.glob(glob_arg)]
 
 
 
