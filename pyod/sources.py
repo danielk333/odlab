@@ -12,8 +12,8 @@ import scipy
 import numpy as np
 import h5py
 
-import .datetime
-import .ccsds
+from . import datetime
+from . import ccsds
 
 _ptypes = [
     'file',

@@ -3,3 +3,10 @@
 '''
 
 '''
+
+from .sources import SourceCollection, Path
+
+__all__ = [
+    'SourceCollection',
+    'Path',
+]
