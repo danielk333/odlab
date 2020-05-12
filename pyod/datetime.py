@@ -7,6 +7,8 @@
 import time
 import os
 
+import numpy as np
+
 
 def npdt2date(dt):
     '''Converts a numpy datetime64 value to a date tuple

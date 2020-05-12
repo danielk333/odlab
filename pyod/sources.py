@@ -13,7 +13,7 @@ import scipy
 import numpy as np
 import h5py
 
-from . import datetime
+from . import datetime as internal_datetime
 from . import ccsds
 
 _ptypes = [
@@ -288,7 +288,7 @@ class HDFSTrackletSource(TrackletSource):
 
             data = np.empty((len(sort_obs),), dtype=TrackletSource.dtype)
 
-            data['date'] = dpt.unix2npdt(ho["m_time"].value[sort_obs])
+            data['date'] = internal_datetime.unix2npdt(ho["m_time"].value[sort_obs])
             data['r'] = ho["m_range"].value*1e3
             data['v'] = ho["m_range_rate"].value*1e3
 
