@@ -50,11 +50,8 @@ import org
 
 from orekit import JArray_double
 
-utc = TimeScalesFactory.getUTC()
 
-
-
-def npdt2absdate(dt):
+def npdt2absdate(dt, utc):
     '''
     Converts a numpy datetime64 value to an orekit AbsoluteDate
     '''
@@ -71,12 +68,12 @@ def npdt2absdate(dt):
     )
 
 
-def mjd2absdate(mjd):
+def mjd2absdate(mjd, utc):
     '''
     Converts a Modified Julian Date value to an orekit AbsoluteDate
     '''
 
-    return npdt2absdate(datetime_internal.mjd2npdt(mjd))
+    return npdt2absdate(datetime_internal.mjd2npdt(mjd), utc)
 
 
 
@@ -99,67 +96,6 @@ def _get_frame(name, frame_tidal_effects = False):
         return FramesFactory.getTEME()
     else:
         raise Exception('Frame "{}" not recognized'.format(name))
-
-
-def iter_states(fun):
-
-    def iter_fun(state, mjd, *args, **kwargs):
-
-        if len(state.shape) > 1:
-            if state.shape[1] > 1:
-                if len(mjd) > 1:
-                    assert len(mjd) == state.shape[1], 'State and MJD lengths do not correspond'
-                else:
-                    raise Exception('Need a epoch for each state')
-
-                state_out = np.empty(state.shape, dtype=state.dtype)
-                for ind in range(state.shape[1]):
-                    state_tmp = state[:,ind]
-                    state_out[:,ind] = fun(state_tmp, mjd[ind], *args, **kwargs)
-                return state_out
-        
-        return fun(state, mjd, *args, **kwargs)
-
-    return iter_fun
-
-
-@iter_states
-def frame_conversion(state, mjd, orekit_in_frame, orekit_out_frame):
-    '''Convert Cartesian state between two frames. Currently options are:
-
-    * EME
-    * CIRF
-    * ITRF
-    * TIRF
-    * ITRFEquinox
-    * TEME
-
-    # TODO: finish docstring
-    '''
-
-    state_out = np.empty(state.shape, dtype=state.dtype)
-
-    pos = org.hipparchus.geometry.euclidean.threed.Vector3D(float(state[0]), float(state[1]), float(state[2]))
-    vel = org.hipparchus.geometry.euclidean.threed.Vector3D(float(state[3]), float(state[4]), float(state[5]))
-    PV_state = PVCoordinates(pos, vel)
-
-    transform = orekit_in_frame.getTransformTo(orekit_out_frame, mjd2absdate(mjd))
-    new_PV = transform.transformPVCoordinates(PV_state)
-
-
-    x_tmp = new_PV.getPosition()
-    v_tmp = new_PV.getVelocity()
-
-    state_out[0] = x_tmp.getX()
-    state_out[1] = x_tmp.getY()
-    state_out[2] = x_tmp.getZ()
-    state_out[3] = v_tmp.getX()
-    state_out[4] = v_tmp.getY()
-    state_out[5] = v_tmp.getZ()
-
-    return state_out
-
-
 
 
 
@@ -273,6 +209,15 @@ class PropagatorOrekit(Propagator):
             solar_activity_strength='WEAK',
         )
 
+
+    def _check_settings(self):
+            for key_s, val_s in self.settings.items():
+                if key_s not in PropagatorOrekit.DEFAULT_SETTINGS:
+                    raise KeyError('Setting "{}" does not exist'.format(key_s))
+                if type(PropagatorOrekit.DEFAULT_SETTINGS[key_s]) != type(val_s):
+                    raise ValueError('Setting "{}" does not support "{}"'.format(key_s, type(val_s)))
+
+
     def __init__(self,
                 orekit_data,
                 settings=None,
@@ -283,11 +228,14 @@ class PropagatorOrekit(Propagator):
         self.settings.update(PropagatorOrekit.DEFAULT_SETTINGS)
         if settings is not None:
             self.settings.update(settings)
+            self._check_settings()
 
         setup_orekit_curdir(filename = orekit_data)
 
+        self.utc = TimeScalesFactory.getUTC()
+
         self.__settings = dict()
-        self.__settings['SolarStrengthLevel'] = getattr(org.orekit.forces.drag.atmosphere.data.MarshallSolarActivityFutureEstimation.StrengthLevel, solar_activity_strength)
+        self.__settings['SolarStrengthLevel'] = getattr(org.orekit.forces.drag.atmosphere.data.MarshallSolarActivityFutureEstimation.StrengthLevel, self.settings['solar_activity_strength'])
         self._tolerances = None
         
         if self.settings['constants_source'] == 'JPL-IAU':
@@ -321,7 +269,7 @@ class PropagatorOrekit(Propagator):
             self._forces['drag_force'] = None
 
         if self.settings['earth_gravity'] == 'HolmesFeatherstone':
-            provider = org.orekit.forces.gravity.potential.GravityFieldFactory.getNormalizedProvider(self.gravity_order[0], self.gravity_order[1])
+            provider = org.orekit.forces.gravity.potential.GravityFieldFactory.getNormalizedProvider(self.settings['gravity_order'][0], self.settings['gravity_order'][1])
             holmesFeatherstone = org.orekit.forces.gravity.HolmesFeatherstoneAttractionModel(
                 FramesFactory.getITRF(IERSConventions.IERS_2010, True),
                 provider,
@@ -344,34 +292,34 @@ class PropagatorOrekit(Propagator):
                 self._forces['perturbation_{}'.format(body)] = perturbation
 
     def __str__(self):
-        '''
+        
         ret = ''
         ret += 'PropagatorOrekit instance @ {}:'.format(hash(self)) + '\n' + '-'*25 + '\n'
-        ret += '{:20s}: '.format('Integrator') + self.integrator + '\n'
-        ret += '{:20s}: '.format('Minimum step') + str(self.minStep) + ' s' + '\n'
-        ret += '{:20s}: '.format('Maximum step') + str(self.maxStep) + ' s' + '\n'
-        ret += '{:20s}: '.format('Position Tolerance') + str(self.position_tolerance) + ' m' + '\n'
+        ret += '{:20s}: '.format('Integrator') + self.settings['integrator'] + '\n'
+        ret += '{:20s}: '.format('Minimum step') + str(self.settings['min_step']) + ' s' + '\n'
+        ret += '{:20s}: '.format('Maximum step') + str(self.settings['max_step']) + ' s' + '\n'
+        ret += '{:20s}: '.format('Position Tolerance') + str(self.settings['position_tolerance']) + ' m' + '\n'
         if self._tolerances is not None:
             ret += '{:20s}: '.format('Absolute Tolerance') + str(JArray_double.cast_(self._tolerances[0])) + ' m' + '\n'
             ret += '{:20s}: '.format('Relative Tolerance') + str(JArray_double.cast_(self._tolerances[1])) + ' m' + '\n'
         ret += '\n'
-        ret += '{:20s}: '.format('Input frame') + self.in_frame + '\n'
-        ret += '{:20s}: '.format('Output frame') + self.out_frame + '\n'
-        ret += '{:20s}: '.format('Gravity model') + self.earth_gravity + '\n'
-        if self.earth_gravity == 'HolmesFeatherstone':
-            ret += '{:20s} - Harmonic expansion order {}'.format('', self.gravity_order) + '\n'
-        ret += '{:20s}: '.format('Atmosphere model') + self.atmosphere + '\n'
-        ret += '{:20s}: '.format('Solar model') + self.solar_activity + '\n'
-        ret += '{:20s}: '.format('Constants') + self.constants_source + '\n'
+        ret += '{:20s}: '.format('Input frame') + self.settings['in_frame'] + '\n'
+        ret += '{:20s}: '.format('Output frame') + self.settings['out_frame'] + '\n'
+        ret += '{:20s}: '.format('Gravity model') + self.settings['earth_gravity'] + '\n'
+        if self.settings['earth_gravity'] == 'HolmesFeatherstone':
+            ret += '{:20s} - Harmonic expansion order {}'.format('', self.settings['gravity_order']) + '\n'
+        ret += '{:20s}: '.format('Atmosphere model') + self.settings['atmosphere'] + '\n'
+        ret += '{:20s}: '.format('Solar model') + self.settings['solar_activity'] + '\n'
+        ret += '{:20s}: '.format('Constants') + self.settings['constants_source'] + '\n'
         ret += 'Included forces:' + '\n'
         for key in self._forces:
             ret += ' - {}'.format(' '.join(key.split('_'))) + '\n'
         ret += 'Third body perturbations:' + '\n'
-        for body in self.solarsystem_perturbers:
+        for body in self.settings['solarsystem_perturbers']:
             ret += ' - {:}'.format(body) + '\n'
-        '''
-        #return ret
-        pass
+        
+        return ret
+
 
 
     def _get_frame(self, name):
@@ -383,13 +331,13 @@ class PropagatorOrekit(Propagator):
         if name == 'EME':
             return FramesFactory.getEME2000()
         elif name == 'CIRF':
-            return FramesFactory.getCIRF(IERSConventions.IERS_2010, not self.frame_tidal_effects)
+            return FramesFactory.getCIRF(IERSConventions.IERS_2010, not self.settings['frame_tidal_effects'])
         elif name == 'ITRF':
-            return FramesFactory.getITRF(IERSConventions.IERS_2010, not self.frame_tidal_effects)
+            return FramesFactory.getITRF(IERSConventions.IERS_2010, not self.settings['frame_tidal_effects'])
         elif name == 'TIRF':
-            return FramesFactory.getTIRF(IERSConventions.IERS_2010, not self.frame_tidal_effects)
+            return FramesFactory.getTIRF(IERSConventions.IERS_2010, not self.settings['frame_tidal_effects'])
         elif name == 'ITRFEquinox':
-            return FramesFactory.getITRFEquinox(IERSConventions.IERS_2010, not self.frame_tidal_effects)
+            return FramesFactory.getITRFEquinox(IERSConventions.IERS_2010, not self.settings['frame_tidal_effects'])
         if name == 'TEME':
             return FramesFactory.getTEME()
         else:
@@ -403,7 +351,7 @@ class PropagatorOrekit(Propagator):
         Configure the integrator tolerances using the orbit.
         '''
         self._tolerances = NumericalPropagator.tolerances(
-                self.position_tolerance,
+                self.settings['position_tolerance'],
                 initialOrbit,
                 initialOrbit.getType()
             )
@@ -414,8 +362,8 @@ class PropagatorOrekit(Propagator):
         )
 
         integrator = integrator_constructor(
-            self.minStep,
-            self.maxStep, 
+            self.settings['min_step'],
+            self.settings['max_step'], 
             JArray_double.cast_(self._tolerances[0]),
             JArray_double.cast_(self._tolerances[1]),
         )
@@ -448,7 +396,7 @@ class PropagatorOrekit(Propagator):
                 if self.settings['solar_activity'] == 'Marshall':
                     msafe = org.orekit.forces.drag.atmosphere.data.MarshallSolarActivityFutureEstimation(
                         "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\p{Digit}\\p{Digit}\\p{Digit}\\p{Digit}F10\\.(?:txt|TXT)",
-                        self.SolarStrengthLevel,
+                        self.__settings['SolarStrengthLevel'],
                     )
                     manager = org.orekit.data.DataProvidersManager.getInstance()
                     manager.feed(msafe.getSupportedNames(), msafe)
@@ -529,9 +477,12 @@ class PropagatorOrekit(Propagator):
         else:
             kwargs['C_D'] = 1.0
 
+        if 'm' not in kwargs:
+            kwargs['m'] = 0.0
+
         t = self._make_numpy(t)
 
-        initialDate = mjd2absdate(mjd0)
+        initialDate = mjd2absdate(mjd0, self.utc)
 
         pos = org.hipparchus.geometry.euclidean.threed.Vector3D(float(state0[0]), float(state0[1]), float(state0[2]))
         vel = org.hipparchus.geometry.euclidean.threed.Vector3D(float(state0[3]), float(state0[4]), float(state0[5]))

@@ -29,8 +29,8 @@ class Propagator(ABC):
     def _check_args(self):
         '''This method makes sure that the function signature of the implemented are correct.
         '''
-        correct_argspec = inspect.getargspec(PropagatorBase.get_orbit)
-        current_argspec = inspect.getargspec(self.get_orbit)
+        correct_argspec = inspect.getargspec(Propagator.propagate)
+        current_argspec = inspect.getargspec(self.propagate)
 
         correct_vars = correct_argspec.args
         current_vars = current_argspec.args
@@ -60,7 +60,7 @@ class Propagator(ABC):
 
     def settings(self, **kwargs):
         self.settings.update(kwargs)
-        self._check_settings():
+        self._check_settings()
 
 
     @abstractmethod

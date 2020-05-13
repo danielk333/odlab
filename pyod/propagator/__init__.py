@@ -15,3 +15,4 @@ try:
     __all__.append('PropagatorOrekit')
 except ImportError as e:
     PropagatorOrekit = None
+    raise e
