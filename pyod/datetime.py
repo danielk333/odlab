@@ -14,8 +14,9 @@ import numpy as np
 #Local import
 
 
-
-
+sec = np.timedelta64(1000000000, 'ns')
+'''numpy.datetime64: Interval of 1 second
+'''
 
 def npdt2date(dt):
     '''Converts a numpy datetime64 value to a date tuple
