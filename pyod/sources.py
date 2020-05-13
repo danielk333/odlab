@@ -126,7 +126,10 @@ class SimulatedTrackletSource(TrackletSource):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'ram':
-                return isinstance(path.data, np.ndarray)
+                bool_ = isinstance(path.data['data'], np.ndarray)
+                dt_comp = [name in path.data['data'].dtype.names for name, dt in SimulatedStateSource.dtype]
+                bool_ = bool_ and np.all(np.array(dt_comp, dtype=np.bool))
+                return bool_
             else:
                 return False
 
@@ -178,7 +181,10 @@ class SimulatedStateSource(StateSource):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'ram':
-                return isinstance(path.data['data'], np.ndarray)
+                bool_ = isinstance(path.data['data'], np.ndarray)
+                dt_comp = [name in path.data['data'].dtype.names for name, dt in SimulatedStateSource.dtype]
+                bool_ = bool_ and np.all(np.array(dt_comp, dtype=np.bool))
+                return bool_
             else:
                 return False
 

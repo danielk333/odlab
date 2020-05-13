@@ -17,13 +17,6 @@ import pathlib
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-data_dir = '.' / pathlib.Path(__file__).parents[0] / 'example_data'
-
-paths = SourcePath.recursive_folder(data_dir, ['tdm'])
-sources = SourceCollection(paths = paths)
-sources.details()
-
 orekit_data = '/home/danielk/IRF/IRF_GITLAB/orekit_build/orekit-data-master.zip'
 
 prop = PropagatorOrekit(
@@ -36,22 +29,46 @@ prop = PropagatorOrekit(
     )
 )
 
+state0 = np.array([-7100297.113,-3897715.442,18568433.707,86.771,-3407.231,2961.571])
+t = np.linspace(0,1800,num=10)
+mjd0 = 54952.08
+
+
+ski_ecef = geodetic2ecef(69.34023844, 20.313166, 0.0)
+data = dict(
+    date = dates,
+    date0 = mjd2npdt(mjd0),
+    params = dict(
+        A= 0.1, 
+        m = 1.0,
+    ),
+    tx_ecef = ski_ecef,
+    rx_ecef = ski_ecef,
+)
+radar = RadarPair(data, prop)
+simulated_observation_data = radar.evaluate(state0)
+
+data = [{
+        'data': np.array([]),
+        'meta': {},
+        'index': 42,
+    },
+    {
+        'data': np.array([]),
+        'meta': {},
+        'index': 43,
+    }
+]
+
+paths = SourcePath.from_list(data, 'ram')
+
+sources = SourceCollection(paths = paths)
+sources.details()
+
+exit()
+
 variables = ['x', 'y', 'z', 'vx', 'vy', 'vz']
-
 dtype = [(name, 'float64') for name in variables]
-
-
-state0_arr = np.array([
-    -7100297.113,
-    -3897715.442,
-    18568433.707,
-    86.771,
-    -3407.231,
-    2961.571,
-])
-# state0_arr = np.empty((6,), dtype=np.float64)
-# state0_arr[:3] = geodetic2ecef(69.34023844, 20.313166, 0.0) + 10000
-# state0_arr[3:] = 0.0
 state0 = np.empty((1,), dtype=dtype)
 for ind, name in enumerate(variables):
     state0[name] = state0_arr[ind]
@@ -60,7 +77,7 @@ for ind, name in enumerate(variables):
 input_data_state = {
     'sources': sources,
     'Model': RadarPair,
-    'date0': mjd2npdt(54952.08),
+    'date0': mjd2npdt(mjd0),
     'params': {
         'm': 1.0,
         'A': 0.1,
