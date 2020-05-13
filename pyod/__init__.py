@@ -6,6 +6,8 @@
 
 from .sources import SourceCollection, SourcePath
 from .models import ForwardModel, RadarPair, EstimatedState
+from .posterior import Posterior
+from .posterior import OptimizeLeastSquares
 
 __all__ = [
     'SourceCollection',
@@ -13,6 +15,8 @@ __all__ = [
     'ForwardModel',
     'RadarPair',
     'EstimatedState',
+    'Posterior',
+    'OptimizeLeastSquares',
 ]
 
 from .propagator import *
