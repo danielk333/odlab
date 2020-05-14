@@ -60,20 +60,27 @@ def orbits(posterior, **kwargs):
     start = kwargs.get('start', None)
     prior = posterior.kwargs['start']
     end = posterior.results.MAP
+    true = kwargs.get('true', None)
 
-    states = [start, prior, end]
+    alpha = kwargs.get('alpha', 0.5)
+    max_range = kwargs.get('max_range', 10e6)
+
+    states = [start, prior, end, true]
 
     _label = [
-        'Start state: Simulated measurements',
+        'Start state: observations',
         'Start state',
-        'Prior: Simulated measurements',
+        'Prior: observations',
         'Prior',
-        'Maximum a Posteriori: Simulated measurements',
+        'Maximum a Posteriori: observations',
         'Maximum a Posteriori',
+        'True: observations',
+        'True',
     ]
     _col = [
         'k',
         'b',
+        'g',
         'r',
     ]
     for model in posterior._models:
@@ -89,11 +96,83 @@ def orbits(posterior, **kwargs):
             states_ = model.get_states(state)
             model.data['t'] = _t
             ax.plot(states_obs[0,:], states_obs[1,:], states_obs[2,:],"."+_col[ind],
-                label=_label[ind*2], alpha=kwargs.get('alpha',0.25),
+                label=_label[ind*2], alpha=alpha,
             )
             ax.plot(states_[0,:], states_[1,:], states_[2,:],"-"+_col[ind],
-                label=_label[ind*2+1], alpha=kwargs.get('alpha',0.25),
+                label=_label[ind*2+1], alpha=alpha,
             )
+    ax.set_xlim(-max_range, max_range)
+    ax.set_ylim(-max_range, max_range)
+    ax.set_zlim(-max_range, max_range)
     ax.legend()
 
     return fig, ax
+
+
+
+
+def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
+
+    residuals = []
+    for state in states:
+        residuals.append(
+            posterior.residuals(state)
+        )
+    
+    plot_n = len(residuals[-1])
+
+    num = len(residuals)
+
+    if plot_n > 3:
+        _pltn = 3
+    else:
+        _pltn = plot_n
+
+    _ind = 0
+    for ind in range(plot_n):
+        if _ind == _pltn or _ind == 0:
+            _ind = 0
+            fig = plt.figure(figsize=(15,15))
+            fig.suptitle(kwargs.get('title', 'Orbit determination residuals'))
+
+        ax = fig.add_subplot(100*_pltn + 21 + _ind*2)
+        for sti in range(num):
+            if absolute:
+                lns = ax.semilogy(
+                    (residuals[sti][ind]['date'] - residuals[sti][ind]['date'][0])/np.timedelta64(1,'h'),
+                    np.abs(residuals[sti][ind]['residuals']['r']),
+                    styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
+                )
+            else:
+                lns = ax.plot(
+                    (residuals[sti][ind]['date'] - residuals[sti][ind]['date'][0])/np.timedelta64(1,'h'),
+                    residuals[sti][ind]['residuals']['r'],
+                    styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
+                )
+        ax.set(
+            xlabel='Time [h]',
+            ylabel='Range residuals [m]',
+            title='Model {}'.format(ind),
+        )
+        ax.legend()
+
+        ax = fig.add_subplot(100*_pltn + 21+_ind*2+1)
+        for sti in range(num):
+            if absolute:
+                lns = ax.semilogy(
+                    (residuals[sti][ind]['date'] - residuals[sti][ind]['date'][0])/np.timedelta64(1,'h'),
+                    np.abs(residuals[sti][ind]['residuals']['v']),
+                    styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
+                )
+            else:
+                lns = ax.plot(
+                    (residuals[sti][ind]['date'] - residuals[sti][ind]['date'][0])/np.timedelta64(1,'h'),
+                    residuals[sti][ind]['residuals']['v'],
+                    styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
+                )
+        ax.set(
+            xlabel='Time [h]',
+            ylabel='Velocity residuals [m/s]',
+            title='Model {}'.format(ind),
+        )
+        _ind += 1

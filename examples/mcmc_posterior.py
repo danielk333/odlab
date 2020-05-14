@@ -42,8 +42,8 @@ v_err = 1e2
 ski_ecef = geodetic2ecef(69.34023844, 20.313166, 0.0)
 kar_ecef = geodetic2ecef(68.463862, 22.458859, 0.0)
 
-# rx_list = [ski_ecef, kar_ecef]
-rx_list = [ski_ecef]
+rx_list = [ski_ecef, kar_ecef]
+# rx_list = [ski_ecef]
 
 source_data = []
 

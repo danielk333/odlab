@@ -127,7 +127,7 @@ class SimulatedTrackletSource(TrackletSource):
         else:
             if path.ptype == 'ram':
                 bool_ = isinstance(path.data['data'], np.ndarray)
-                dt_comp = [name in path.data['data'].dtype.names for name, dt in SimulatedStateSource.dtype]
+                dt_comp = [name[0] in path.data['data'].dtype.names for name in SimulatedTrackletSource.dtype]
                 bool_ = bool_ and np.all(np.array(dt_comp, dtype=np.bool))
                 return bool_
             else:
@@ -399,7 +399,7 @@ class SourcePath(object):
 
     def __str__(self):
         if self.ptype == 'ram':
-            return self.ptype + ': ' + repr(self.data)
+            return self.ptype + ': ' + str(type(self.data['data']))
         else:
             return self.ptype + ': ' + str(self.data)
 
@@ -487,9 +487,9 @@ class SourceCollection(list):
         print(_str)
         print('-'*len(_str))
         for obj in self:
-            print( '-'*10 + str(obj.path) + '-'*10)
-            print('| {} data points '.format(len(obj.data)))
-            print( '-'*10 + ' META DATA ' + '-'*10)
+            print(str(obj.path))
+            print('{} data points '.format(len(obj.data)))
+            print('-- META DATA')
             for key, val in obj.meta.items():
                 print(' - {}: {}'.format(key, val))
             print('')
