@@ -6,7 +6,7 @@
 
 from pyod import RadarPair
 from pyod import PropagatorOrekit
-from pyod import OptimizeLeastSquares
+from pyod import MCMCLeastSquares
 from pyod import SourceCollection
 from pyod import SourcePath
 from pyod.plot import orbits, residuals
@@ -97,13 +97,15 @@ input_data_state = {
     'params': params,
 }
 
-post = OptimizeLeastSquares(
+post = MCMCLeastSquares(
     data = input_data_state,
     variables = variables,
     start = state0_named,
     prior = None,
     propagator = prop,
-    method = 'Nelder-Mead',
+    method = 'SCAM',
+    steps = 10**3,
+    step = np.array([1e2,1e2,1e2,1e1,1e1,1e1], dtype=np.float64),
     options = dict(
         maxiter = 10000,
         disp = True,

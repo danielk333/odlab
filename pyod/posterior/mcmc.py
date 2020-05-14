@@ -5,44 +5,28 @@
 '''
 
 #Python standard import
-
+import os
+import copy
+import glob
 
 #Third party import
-
+import h5py
+from tqdm import tqdm
+import scipy
+import scipy.stats
+import scipy.optimize as optimize
+import numpy as np
 
 #Local import
-
-
-
-
+from .. import sources
+from .posterior import Posterior
+from .posterior import _named_to_enumerated, _enumerated_to_named
+from .least_squares import OptimizeLeastSquares
 
 
 
 class MCMCLeastSquares(OptimizeLeastSquares):
     '''Markov Chain Monte Carlo sampling of the posterior, assuming all measurement errors are Gaussian (thus the log likelihood becomes a least squares).
-        
-        Methods:
-         * SCAM
-         * HMC
-
-        
-        HMC:
-
-            Potential energy function is defined as
-
-            .. math
-
-                U(\mathbf{q}) = - \log(\pi(\mathbf{q}) \mathcal{L}(\mathbf{q} | D))
-
-            where \mathbf{q} is the state for inference, \pi is the prior for the state, and L is the liklihood function given the data D
-
-
-        For SCAM:
-         * step: structured numpy array of step sizes for each variable, the steps will be adapted by the algorithm but this is the starting point.
-        For HMC:
-         * step: structured numpy array with fields: dt (time step) and num (number of leap-frogs in one proposal), and then also "d[variable name]" for the numerical derivate size for that variable.
-
-        #TODO to the gradient analytically since the likelihood is nice function
     '''
 
     REQUIRED = OptimizeLeastSquares.REQUIRED + [
@@ -54,7 +38,6 @@ class MCMCLeastSquares(OptimizeLeastSquares):
         'method': 'SCAM',
         'method_options': {},
         'prior': None,
-        'coord': 'cart',
         'tune': 1000,
         'log_vars': [],
         'proposal': 'normal',
@@ -77,24 +60,7 @@ class MCMCLeastSquares(OptimizeLeastSquares):
         
         logpost = self.evalute(xnow)
 
-        if self.kwargs['method'] == 'HMC':
-
-            print('\n{} running {}'.format(type(self).__name__, self.kwargs['method']))
-            pbar = tqdm(range(steps), ncols=100)
-            for ind in pbar:
-                pbar.set_description('Sampling log-posterior = {:<10.3f} '.format(logpost))
-
-                xnew, logpost = hamiltoniuan_monte_carlo(
-                    xnow,
-                    lambda q: self.evalute(q),
-                    lambda q: self._grad(q),
-                    step['dt'],
-                    step['num'],
-                )
-
-                chain[ind] = xnew
-
-        elif self.kwargs['method'] == 'SCAM':
+        if self.kwargs['method'] == 'SCAM':
             
             accept = np.zeros((len(self.variables),), dtype=start.dtype)
             tries = np.zeros((len(self.variables),), dtype=start.dtype)
@@ -170,26 +136,6 @@ class MCMCLeastSquares(OptimizeLeastSquares):
         self._fill_results()
 
         return self.results
-
-
-    def _grad(self, state):
-
-        step = self.kwargs['step']
-
-        grad = np.empty((1,), dtype=state.dtype)
-        for var in self.variables:
-            state_m = state.copy()
-            state_p = state.copy()
-            
-            state_m[0][var] -= step[0]['d' + var]
-            state_p[0][var] += step[0]['d' + var]
-            
-            post_m = self.evalute(state_m)
-            post_p = self.evalute(state_p)
-
-            grad[var] = 0.5*(post_p - post_m)/step[0]['d' + var]
-
-        return grad
 
 
     def _fill_results(self):
