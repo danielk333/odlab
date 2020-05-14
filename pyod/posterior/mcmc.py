@@ -5,23 +5,49 @@
 '''
 
 #Python standard import
-import os
 import copy
-import glob
 
 #Third party import
-import h5py
 from tqdm import tqdm
-import scipy
-import scipy.stats
-import scipy.optimize as optimize
 import numpy as np
+from mpi4py import MPI
 
 #Local import
 from .. import sources
 from .posterior import Posterior
 from .posterior import _named_to_enumerated, _enumerated_to_named
 from .least_squares import OptimizeLeastSquares
+
+
+comm = MPI.COMM_WORLD
+
+
+def mpi_wrap(run):
+
+    def new_run(self, *args, **kwargs):
+
+        run_mpi = self.kwargs.get('MPI', True)
+        if run_mpi:
+            steps = self.kwargs['steps']
+            self.kwargs['steps'] = len(range(comm.rank, steps, comm.size))
+
+            results0 = run(self, *args, **kwargs)
+            trace0 = results0.trace
+
+            trace = np.empty((0,), dtype=trace0.dtype)
+            for pid in range(comm.size):
+                trace_pid = comm.bcast(trace0, root=pid)
+                trace = np.append(trace, trace_pid)
+
+            self.results.trace = trace
+            self._fill_results()
+
+            return self.results
+        else:
+            return run(self, *args, **kwargs)
+        
+
+    return new_run
 
 
 

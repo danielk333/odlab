@@ -85,9 +85,13 @@ dtype = [(name, 'float64') for name in variables]
 state0_named = np.empty((1,), dtype=dtype)
 true_state = np.empty((1,), dtype=dtype)
 start_err = [5e3]*3 + [1e2]*3
+
+step_arr = np.array([1e2,1e2,1e2,1e1,1e1,1e1], dtype=np.float64)
+step = np.empty((1,), dtype=dtype)
 for ind, name in enumerate(variables):
     state0_named[name] = state0[ind] + np.random.randn(1)*start_err[ind]
     true_state[name] = state0[ind]
+    step[name] = step_arr[ind]
 
 
 input_data_state = {
@@ -104,8 +108,8 @@ post = MCMCLeastSquares(
     prior = None,
     propagator = prop,
     method = 'SCAM',
-    steps = 10**3,
-    step = np.array([1e2,1e2,1e2,1e1,1e1,1e1], dtype=np.float64),
+    steps = int(10**4),
+    step = step,
     options = dict(
         maxiter = 10000,
         disp = True,
