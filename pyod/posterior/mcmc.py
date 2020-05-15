@@ -34,13 +34,21 @@ def mpi_wrap(run):
             results0 = run(self, *args, **kwargs)
             trace0 = results0.trace
 
-            trace = np.empty((0,), dtype=trace0.dtype)
-            for pid in range(comm.size):
-                trace_pid = comm.bcast(trace0, root=pid)
-                trace = np.append(trace, trace_pid)
+            if comm.rank == 0:
+                trace = np.empty((0,), dtype=trace0.dtype)
+                trace_pid = comm.gather(trace0, root=0)
+                for pid in range(comm.size):
+                    trace = np.append(trace, trace_pid[pid])
+                    trace_pid[pid] = None
+                del trace_pid
 
-            self.results.trace = trace
-            self._fill_results()
+            if comm.rank != 0:
+                del trace0
+                del results0
+                self.results = None
+            else:
+                self.results.trace = trace
+                self._fill_results()
 
             return self.results
         else:
@@ -62,7 +70,11 @@ class MCMCLeastSquares(OptimizeLeastSquares):
 
     OPTIONAL = {
         'method': 'SCAM',
-        'method_options': {},
+        'method_options': {
+            'accept_max': 0.5,
+            'accept_min': 0.3,
+            'adapt_interval': 1000,
+        },
         'prior': None,
         'tune': 1000,
         'log_vars': [],
@@ -95,7 +107,11 @@ class MCMCLeastSquares(OptimizeLeastSquares):
             proposal_mu = np.zeros((len(self.variables,)), dtype=np.float64)
 
             print('\n{} running {}'.format(type(self).__name__, self.kwargs['method']))
-            pbar = tqdm(range(steps), ncols=100)
+            pbars = []
+            for pbar_id in range(comm.size):
+                pbars.append(tqdm(range(steps), ncols=100))
+            pbar = pbars[comm.rank]
+
             for ind in pbar:
                 pbar.set_description('Sampling log-posterior = {:<10.3f} '.format(logpost))
 
@@ -130,28 +146,30 @@ class MCMCLeastSquares(OptimizeLeastSquares):
                     xnow = xtry
                     accept[var] += 1.0
 
-                if ind % 100 == 0 and ind > 0:
+                if ind % self.kwargs['method_options']['adapt_interval'] == 0 and ind > 0:
                     for name in self.variables:
                         ratio = accept[0][name]/tries[0][name]
 
-                        if ratio > 0.5:
+                        if ratio > self.kwargs['method_options']['accept_max']:
                             step[0][name] *= 2.0
-                        elif ratio < 0.3:
+                        elif ratio < self.kwargs['method_options']['accept_min']:
                             step[0][name] /= 2.0
                         
                         accept[0][name] = 0.0
                         tries[0][name] = 0.0
                 
 
-                if ind % (steps//100) == 0 and ind > 0:
-                    if self.kwargs['proposal'] == 'adaptive':
-                        _data = np.empty((len(self.variables), ind), dtype=np.float64)
-                        for dim, var in enumerate(self.variables):
-                            _data[dim,:] = chain[:ind][var]
-                        _proposal_cov = np.corrcoef(_data)
-                        
-                        if not np.any(np.isnan(_proposal_cov)):
-                            proposal_cov = _proposal_cov
+                # if ind % (steps//self.kwargs['method_options']['adapt_interval']) == 0 and ind > 0:
+                #     if self.kwargs['proposal'] == 'adaptive':
+                #         _data = np.empty((len(self.variables), ind), dtype=np.float64)
+                #         for dim, var in enumerate(self.variables):
+                #             _data[dim,:] = chain[:ind][var]
+                #         _proposal_cov = np.corrcoef(_data)
+                #
+                #         if not np.any(np.isnan(_proposal_cov)):
+                #             proposal_cov = _proposal_cov
+                #     else:
+                #         raise Exception('Proposal "{}" not supported.'.format(self.kwargs['proposal']))
 
 
                 chain[ind] = xnow

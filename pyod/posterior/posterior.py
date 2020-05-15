@@ -284,7 +284,11 @@ class Posterior(object):
         for key in self.OPTIONAL:
             if key not in kwargs:
                 continue
-            self.kwargs[key] = kwargs[key]
+            
+            if isinstance(self.kwargs[key], dict):
+                self.kwargs[key].update(kwargs[key])
+            else:
+                self.kwargs[key] = kwargs[key]
 
         for key in self.REQUIRED:
             self.kwargs[key] = kwargs[key]

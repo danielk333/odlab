@@ -19,7 +19,7 @@ prop = PropagatorOrekit(
     orekit_data = orekit_data, 
     settings=dict(
         in_frame='ITRF',
-        out_frame='EME',
+        out_frame='ITRF',
     )
 )
 print(prop)

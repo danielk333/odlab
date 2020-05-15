@@ -14,9 +14,143 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
 
+try:
+    from pandas.plotting import scatter_matrix
+    import pandas
+except ImportError:
+    scatter_matrix = None
+    pandas = None
+
 #Local import
 from .posterior import _enumerated_to_named
 from .posterior import _named_to_enumerated
+
+
+
+def autocorrelation(results, **kwargs):
+
+    min_k = kwargs.get('min_k', 0)
+    max_k = kwargs.get('max_k', len(results.trace)//100)
+
+    MC_gamma = results.autocovariance(min_k = min_k, max_k = max_k)
+    Kv = np.arange(min_k, max_k)
+    
+    fig1, axes1 = plt.subplots(3, 2,figsize=(15,15), sharey=True, sharex=True)
+    fig1.suptitle('Markov Chain autocorrelation functions')
+    ind = 0
+    for xp in range(3):
+        for yp in range(2):
+            var = results.variables[ind]
+            ax = axes1[xp,yp]
+            ax.plot(Kv, MC_gamma[var]/MC_gamma[var][0])
+            ax.set(
+                xlabel='$k$',
+                ylabel='$\hat{\gamma}_k/\hat{\gamma}_0$',
+                title='Autocorrelation for "{}"'.format(var),
+            )
+            ind += 1
+
+    fig2, axes2 = plt.subplots(len(results.variables)-6, 1, figsize=(15,15))
+    fig2.suptitle('Markov Chain autocorrelation functions')
+    for ind, var in enumerate(results.variables[6:]):
+        if len(results.variables)-6 > 1:
+            ax = axes2[ind]
+        else:
+            ax = axes2
+        ax.plot(Kv, MC_gamma[var]/MC_gamma[var][0])
+        ax.set(
+            xlabel='$k$',
+            ylabel='$\hat{\gamma}_k/\hat{\gamma}_0$',
+            title='Autocorrelation for "{}"'.format(var),
+        )
+
+    plots = []
+    plots.append({
+        'fig': fig1,
+        'axes': [axes1],
+    })
+    plots.append({
+        'fig': fig2,
+        'axes': [axes2],
+    })
+
+    return plots
+
+
+
+
+def scatter_trace(results, **kwargs):
+
+    if scatter_matrix is None:
+        raise ImportError('pandas package is required for this plotting function')
+
+    thin = kwargs.get('thin', None)
+
+    trace2 = results.trace.copy()
+    for var in ['x','y','z','vx','vy','vz']:
+        if var in results.variables:
+            trace2[var] *= 1e-3
+    if thin is not None:
+        trace2 = trace2[thin]
+    df = pandas.DataFrame.from_records(trace2)
+    
+    cols = kwargs.get('columns', {
+        'x':'x [km]',
+        'y':'y [km]',
+        'z':'z [km]',
+        'vx':'$v_x$ [km/s]',
+        'vy':'$v_y$ [km/s]',
+        'vz':'$v_z$ [km/s]',
+        'A':'A [m$^2$]',
+    })
+    df = df.rename(columns=cols)
+
+    axes = scatter_matrix(df, alpha=kwargs.get('alpha', 0.01), figsize=(15,15))
+
+    return axes
+
+
+
+def trace(results, **kwargs):
+
+    axis_var = kwargs.get('labels', None)
+    if axis_var is None:
+        axis_var = []
+        for var in results.variables:
+            if var in ['x', 'y', 'z', 'vx', 'vy', 'vz']:
+                axis_var += ['${}$ [km]'.format(var)]
+            else:
+                axis_var += [var]
+
+    plots = []
+    for ind, var in enumerate(results.variables):
+        if var in ['x', 'y', 'z', 'vx', 'vy', 'vz']:
+            coef = 1e-3
+        else:
+            coef = 1.0
+    
+        if ind == 0 or ind == 6:
+            fig = plt.figure(figsize=(15,15))
+            fig.suptitle(kwargs.get('title','MCMC trace plot'))
+            plots.append({
+                'fig': fig,
+                'axes': [],
+            })
+            
+        if ind <= 5:
+            ax = fig.add_subplot(231+ind)
+        if ind > 5:
+            ax = fig.add_subplot(100*(len(results.variables) - 6) + ind - 5 + 10)
+        plots[-1]['axes'].append(ax)
+        ax.plot(results.trace[var]*coef)
+        ax.set(
+            xlabel='Iteration',
+            ylabel='{}'.format(axis_var[ind]),
+        )
+
+    return plots
+
+
 
 def earth_grid(ax,num_lat=25,num_lon=50,alpha=0.1,res = 100, color='black'):
     lons = np.linspace(-180, 180, num_lon+1) * np.pi/180 
@@ -106,7 +240,13 @@ def orbits(posterior, **kwargs):
     ax.set_zlim(-max_range, max_range)
     ax.legend()
 
-    return fig, ax
+    plots = []
+    plots.append({
+        'fig': fig,
+        'axes': [ax],
+    })
+
+    return plots
 
 
 
@@ -128,14 +268,22 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
     else:
         _pltn = plot_n
 
+    plots = []
+
     _ind = 0
     for ind in range(plot_n):
         if _ind == _pltn or _ind == 0:
             _ind = 0
             fig = plt.figure(figsize=(15,15))
             fig.suptitle(kwargs.get('title', 'Orbit determination residuals'))
+            plots.append({
+                'fig': fig,
+                'axes': [],
+            })
 
         ax = fig.add_subplot(100*_pltn + 21 + _ind*2)
+        plots[-1]['axes'].append(ax)
+
         for sti in range(num):
             if absolute:
                 lns = ax.semilogy(
@@ -157,6 +305,8 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
         ax.legend()
 
         ax = fig.add_subplot(100*_pltn + 21+_ind*2+1)
+        plots[-1]['axes'].append(ax)
+
         for sti in range(num):
             if absolute:
                 lns = ax.semilogy(
@@ -176,3 +326,5 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
             title='Model {}'.format(ind),
         )
         _ind += 1
+
+    return plots
