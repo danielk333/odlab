@@ -22,6 +22,11 @@ to test
 
    pytest
 
+If you want to test orekit propagator, that requires data to function, call pytest with the additional parameter `orekit_data`. Otherwise these tests are skipped.
+
+.. code-block:bash
+
+   pytest --orekit_data='/orekit-data-master.zip'
 
 
 to make doc
