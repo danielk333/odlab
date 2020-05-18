@@ -10,6 +10,8 @@ from .posterior import Posterior
 from .posterior import OptimizeLeastSquares
 from .posterior import MCMCLeastSquares
 
+__version__ = '0.1.0'
+
 __all__ = [
     'SourceCollection',
     'SourcePath',
