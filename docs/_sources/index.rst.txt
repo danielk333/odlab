@@ -14,10 +14,26 @@ PYOD (pronounced "pi-o-d") stands for PY Orbit Determination and is an open-sour
 
 .. include:: ../../README
 
+Examples
+---------
+
+Example gallery of the functionality
 
 .. toctree::
+   :glob:
    :maxdepth: 2
-   :caption: Contents:
+
+   examples/*
+
+
+API Reference
+===============
+
+.. toctree::
+   :maxdepth: 3
+
+   api
+
 
 
 Indices and tables

@@ -1,0 +1,385 @@
+
+
+<!doctype html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>This is my example script &#8212; Python 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script src="../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">Python 0.1.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">This is my example script</a><ul>
+<li><a class="reference internal" href="#outputs">Outputs</a></li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/examples/test_example.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="this-is-my-example-script">
+<h1>This is my example script<a class="headerlink" href="#this-is-my-example-script" title="Permalink to this headline">¶</a></h1>
+<p>Docstring for this example</p>
+<div class="highlight-python notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15
+ 16
+ 17
+ 18
+ 19
+ 20
+ 21
+ 22
+ 23
+ 24
+ 25
+ 26
+ 27
+ 28
+ 29
+ 30
+ 31
+ 32
+ 33
+ 34
+ 35
+ 36
+ 37
+ 38
+ 39
+ 40
+ 41
+ 42
+ 43
+ 44
+ 45
+ 46
+ 47
+ 48
+ 49
+ 50
+ 51
+ 52
+ 53
+ 54
+ 55
+ 56
+ 57
+ 58
+ 59
+ 60
+ 61
+ 62
+ 63
+ 64
+ 65
+ 66
+ 67
+ 68
+ 69
+ 70
+ 71
+ 72
+ 73
+ 74
+ 75
+ 76
+ 77
+ 78
+ 79
+ 80
+ 81
+ 82
+ 83
+ 84
+ 85
+ 86
+ 87
+ 88
+ 89
+ 90
+ 91
+ 92
+ 93
+ 94
+ 95
+ 96
+ 97
+ 98
+ 99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">from</span> <span class="nn">pyod</span> <span class="kn">import</span> <span class="n">RadarPair</span>
+<span class="kn">from</span> <span class="nn">pyod</span> <span class="kn">import</span> <span class="n">PropagatorOrekit</span>
+<span class="kn">from</span> <span class="nn">pyod</span> <span class="kn">import</span> <span class="n">OptimizeLeastSquares</span>
+<span class="kn">from</span> <span class="nn">pyod</span> <span class="kn">import</span> <span class="n">SourceCollection</span>
+<span class="kn">from</span> <span class="nn">pyod</span> <span class="kn">import</span> <span class="n">SourcePath</span>
+<span class="kn">from</span> <span class="nn">pyod.plot</span> <span class="kn">import</span> <span class="n">orbits</span><span class="p">,</span> <span class="n">residuals</span>
+<span class="kn">from</span> <span class="nn">pyod.datetime</span> <span class="kn">import</span> <span class="n">mjd2npdt</span>
+<span class="kn">from</span> <span class="nn">pyod.coordinates</span> <span class="kn">import</span> <span class="n">geodetic2ecef</span>
+<span class="kn">from</span> <span class="nn">pyod.sources</span> <span class="kn">import</span> <span class="n">TrackletSource</span>
+
+<span class="kn">import</span> <span class="nn">pathlib</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">orekit_data</span> <span class="o">=</span> <span class="s1">&#39;/home/danielk/IRF/IRF_GITLAB/orekit_build/orekit-data-master.zip&#39;</span>
+
+<span class="n">prop</span> <span class="o">=</span> <span class="n">PropagatorOrekit</span><span class="p">(</span>
+    <span class="n">orekit_data</span> <span class="o">=</span> <span class="n">orekit_data</span><span class="p">,</span> 
+    <span class="n">settings</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+        <span class="n">in_frame</span><span class="o">=</span><span class="s1">&#39;ITRF&#39;</span><span class="p">,</span>
+        <span class="n">out_frame</span><span class="o">=</span><span class="s1">&#39;ITRF&#39;</span><span class="p">,</span>
+        <span class="n">drag_force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">radiation_pressure</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">state0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mf">7100297.113</span><span class="p">,</span><span class="o">-</span><span class="mf">3897715.442</span><span class="p">,</span><span class="mf">18568433.707</span><span class="p">,</span><span class="mf">86.771</span><span class="p">,</span><span class="o">-</span><span class="mf">3407.231</span><span class="p">,</span><span class="mf">2961.571</span><span class="p">])</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1800</span><span class="o">/</span><span class="p">(</span><span class="mi">3600</span><span class="o">*</span><span class="mi">24</span><span class="p">),</span><span class="n">num</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">mjd0</span> <span class="o">=</span> <span class="mf">54952.08</span>
+<span class="n">dates</span> <span class="o">=</span> <span class="n">mjd2npdt</span><span class="p">(</span><span class="n">mjd0</span> <span class="o">+</span> <span class="n">t</span><span class="p">)</span>
+<span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">A</span><span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">m</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span>
+
+<span class="n">r_err</span> <span class="o">=</span> <span class="mf">1e3</span>
+<span class="n">v_err</span> <span class="o">=</span> <span class="mf">1e2</span>
+
+<span class="n">ski_ecef</span> <span class="o">=</span> <span class="n">geodetic2ecef</span><span class="p">(</span><span class="mf">69.34023844</span><span class="p">,</span> <span class="mf">20.313166</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+<span class="n">kar_ecef</span> <span class="o">=</span> <span class="n">geodetic2ecef</span><span class="p">(</span><span class="mf">68.463862</span><span class="p">,</span> <span class="mf">22.458859</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+<span class="c1"># rx_list = [ski_ecef, kar_ecef]</span>
+<span class="n">rx_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">ski_ecef</span><span class="p">]</span>
+
+<span class="n">source_data</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="k">for</span> <span class="n">rx</span> <span class="ow">in</span> <span class="n">rx_list</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">dates</span><span class="p">,</span>
+        <span class="n">date0</span> <span class="o">=</span> <span class="n">mjd2npdt</span><span class="p">(</span><span class="n">mjd0</span><span class="p">),</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">params</span><span class="p">,</span>
+        <span class="n">tx_ecef</span> <span class="o">=</span> <span class="n">ski_ecef</span><span class="p">,</span>
+        <span class="n">rx_ecef</span> <span class="o">=</span> <span class="n">rx</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">radar</span> <span class="o">=</span> <span class="n">RadarPair</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">prop</span><span class="p">)</span>
+    <span class="n">sim_data</span> <span class="o">=</span> <span class="n">radar</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">state0</span><span class="p">)</span>
+
+    <span class="n">radar_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">),),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">TrackletSource</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="n">radar_data</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dates</span>
+    <span class="n">radar_data</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sim_data</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">))</span><span class="o">*</span><span class="n">r_err</span>
+    <span class="n">radar_data</span><span class="p">[</span><span class="s1">&#39;v&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sim_data</span><span class="p">[</span><span class="s1">&#39;v&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">))</span><span class="o">*</span><span class="n">v_err</span>
+    <span class="n">radar_data</span><span class="p">[</span><span class="s1">&#39;r_sd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">),),</span> <span class="n">r_err</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">radar_data</span><span class="p">[</span><span class="s1">&#39;v_sd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">),),</span> <span class="n">v_err</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="n">source_data</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">radar_data</span><span class="p">,</span>
+            <span class="s1">&#39;meta&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">tx_ecef</span> <span class="o">=</span> <span class="n">ski_ecef</span><span class="p">,</span>
+                <span class="n">rx_ecef</span> <span class="o">=</span> <span class="n">rx</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="s1">&#39;index&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+
+<span class="n">paths</span> <span class="o">=</span> <span class="n">SourcePath</span><span class="o">.</span><span class="n">from_list</span><span class="p">(</span><span class="n">source_data</span><span class="p">,</span> <span class="s1">&#39;ram&#39;</span><span class="p">)</span>
+
+<span class="n">sources</span> <span class="o">=</span> <span class="n">SourceCollection</span><span class="p">(</span><span class="n">paths</span> <span class="o">=</span> <span class="n">paths</span><span class="p">)</span>
+<span class="n">sources</span><span class="o">.</span><span class="n">details</span><span class="p">()</span>
+
+<span class="n">variables</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;vx&#39;</span><span class="p">,</span> <span class="s1">&#39;vy&#39;</span><span class="p">,</span> <span class="s1">&#39;vz&#39;</span><span class="p">]</span>
+<span class="n">dtype</span> <span class="o">=</span> <span class="p">[(</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">]</span>
+<span class="n">state0_named</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">true_state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">1</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">start_err</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5e3</span><span class="p">]</span><span class="o">*</span><span class="mi">3</span> <span class="o">+</span> <span class="p">[</span><span class="mf">1e2</span><span class="p">]</span><span class="o">*</span><span class="mi">3</span>
+<span class="k">for</span> <span class="n">ind</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">variables</span><span class="p">):</span>
+    <span class="n">state0_named</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">state0</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">start_err</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+    <span class="n">true_state</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">state0</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span>
+
+
+<span class="n">input_data_state</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;sources&#39;</span><span class="p">:</span> <span class="n">sources</span><span class="p">,</span>
+    <span class="s1">&#39;Model&#39;</span><span class="p">:</span> <span class="n">RadarPair</span><span class="p">,</span>
+    <span class="s1">&#39;date0&#39;</span><span class="p">:</span> <span class="n">mjd2npdt</span><span class="p">(</span><span class="n">mjd0</span><span class="p">),</span>
+    <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">post</span> <span class="o">=</span> <span class="n">OptimizeLeastSquares</span><span class="p">(</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">input_data_state</span><span class="p">,</span>
+    <span class="n">variables</span> <span class="o">=</span> <span class="n">variables</span><span class="p">,</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">state0_named</span><span class="p">,</span>
+    <span class="n">prior</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">propagator</span> <span class="o">=</span> <span class="n">prop</span><span class="p">,</span>
+    <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;Nelder-Mead&#39;</span><span class="p">,</span>
+    <span class="n">options</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">maxiter</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">,</span>
+        <span class="n">disp</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">xatol</span> <span class="o">=</span> <span class="mf">1e1</span><span class="p">,</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">post</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">results</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;True error:&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">variables</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{:&lt;3}</span><span class="s1">: </span><span class="si">{:.3f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">var</span><span class="p">,</span> <span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">MAP</span><span class="p">[</span><span class="n">var</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">true_state</span><span class="p">[</span><span class="n">var</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="mf">1e-3</span><span class="p">))</span>
+
+<span class="n">orbits</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="n">true</span><span class="o">=</span><span class="n">true_state</span><span class="p">)</span>
+<span class="n">residuals</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="p">[</span><span class="n">state0_named</span><span class="p">,</span> <span class="n">true_state</span><span class="p">,</span><span class="n">post</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">MAP</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;Start&#39;</span><span class="p">,</span> <span class="s1">&#39;True&#39;</span><span class="p">,</span> <span class="s1">&#39;MAP&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;-b&#39;</span><span class="p">,</span> <span class="s1">&#39;-r&#39;</span><span class="p">,</span> <span class="s1">&#39;-g&#39;</span><span class="p">],</span> <span class="n">absolute</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">residuals</span><span class="p">(</span><span class="n">post</span><span class="p">,</span> <span class="p">[</span><span class="n">state0_named</span><span class="p">,</span> <span class="n">true_state</span><span class="p">,</span><span class="n">post</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">MAP</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;Start&#39;</span><span class="p">,</span> <span class="s1">&#39;True&#39;</span><span class="p">,</span> <span class="s1">&#39;MAP&#39;</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;-b&#39;</span><span class="p">,</span> <span class="s1">&#39;-r&#39;</span><span class="p">,</span> <span class="s1">&#39;-g&#39;</span><span class="p">],</span> <span class="n">absolute</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+</pre></div>
+</td></tr></table></div>
+<div class="section" id="outputs">
+<h2>Outputs<a class="headerlink" href="#outputs" title="Permalink to this headline">¶</a></h2>
+<img alt="Alternative text" src="../_images/orekit_orbit.png" />
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>PropagatorOrekit instance @ -9223363265289739155:
+-------------------------
+Integrator          : DormandPrince853
+Minimum step        : <span class="m">0</span>.001 s
+Maximum step        : <span class="m">120</span>.0 s
+Position Tolerance  : <span class="m">10</span>.0 m
+
+Input frame         : ITRF
+Output frame        : EME
+Gravity model       : HolmesFeatherstone
+                     - Harmonic expansion order <span class="o">(</span><span class="m">10</span>, <span class="m">10</span><span class="o">)</span>
+Atmosphere model    : DTM2000
+Solar model         : Marshall
+Constants           : WGS84
+Included forces:
+ - radiation pressure
+ - drag force
+ - earth gravity
+ - perturbation Moon
+ - perturbation Sun
+Third body perturbations:
+ - Moon
+ - Sun
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">Python 0.1.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019-2020, Daniel Kastinen.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+    </div>
+  </body>
+</html>

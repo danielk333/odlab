@@ -1,0 +1,595 @@
+
+
+<!doctype html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>pyod.sources &#8212; Python 0.1.0 documentation</title>
+    <link rel="stylesheet" href="../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script src="../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Python 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for pyod.sources</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="c1">#Python standard import</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">pathlib</span>
+
+<span class="c1">#Third party import</span>
+<span class="kn">import</span> <span class="nn">scipy</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">h5py</span>
+
+<span class="c1">#Local import</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">datetime</span> <span class="k">as</span> <span class="n">internal_datetime</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">ccsds</span>
+
+
+<span class="n">_ptypes</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;file&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;folder&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;network&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;ram&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="ObservationSource"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.ObservationSource.html#pyod.sources.ObservationSource">[docs]</a><span class="k">class</span> <span class="nc">ObservationSource</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    
+    <span class="n">dtype</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1">#this is the dtype of data</span>
+    <span class="n">REQUIRED_META</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="ObservationSource.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.ObservationSource.__init__.html#pyod.sources.ObservationSource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+
+        <span class="c1">#these are set by load()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ObservationSource.avalible_data"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.ObservationSource.avalible_data.html#pyod.sources.ObservationSource.avalible_data">[docs]</a>    <span class="k">def</span> <span class="nf">avalible_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">REQUIRED_META</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;&lt;</span><span class="si">{}</span><span class="s1"> located at </span><span class="si">{}</span><span class="s1">&gt;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="ObservationSource.accept"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.ObservationSource.accept.html#pyod.sources.ObservationSource.accept">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Verify that the path can be loaded by this source handler</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ObservationSource.load"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.ObservationSource.load.html#pyod.sources.ObservationSource.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Load all tracklets into memory as numpy arrays</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ObservationSource.generate_model"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.ObservationSource.generate_model.html#pyod.sources.ObservationSource.generate_model">[docs]</a>    <span class="k">def</span> <span class="nf">generate_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        
+        <span class="n">avalible_data</span> <span class="o">=</span> <span class="p">[</span><span class="n">dt</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">dt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">]</span>
+        <span class="n">model_args</span> <span class="o">=</span> <span class="n">Model</span><span class="o">.</span><span class="n">REQUIRED_DATA</span>
+
+        <span class="n">given_data</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">model_data</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">model_args</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">arg</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">given_data</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">avalible_data</span><span class="p">:</span>
+                    <span class="n">model_data</span><span class="p">[</span><span class="n">arg</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">arg</span><span class="p">]</span>
+                <span class="k">elif</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">REQUIRED_META</span><span class="p">:</span>
+                    <span class="n">model_data</span><span class="p">[</span><span class="n">arg</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="n">arg</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Not enough data to construct model: </span><span class="si">{}</span><span class="s1"> missing&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arg</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">model_data</span><span class="p">[</span><span class="n">arg</span><span class="p">]</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">arg</span><span class="p">]</span>
+                <span class="k">del</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">arg</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">Model</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">model_data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
+
+
+
+<div class="viewcode-block" id="TrackletSource"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.TrackletSource.html#pyod.sources.TrackletSource">[docs]</a><span class="k">class</span> <span class="nc">TrackletSource</span><span class="p">(</span><span class="n">ObservationSource</span><span class="p">):</span>
+    
+    <span class="n">dtype</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;datetime64[us]&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;v&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;r_sd&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;v_sd&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">REQUIRED_META</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;tx_ecef&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;rx_ecef&#39;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+<div class="viewcode-block" id="TrackletSource.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.TrackletSource.__init__.html#pyod.sources.TrackletSource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">TrackletSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
+
+    
+
+<div class="viewcode-block" id="SimulatedTrackletSource"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SimulatedTrackletSource.html#pyod.sources.SimulatedTrackletSource">[docs]</a><span class="k">class</span> <span class="nc">SimulatedTrackletSource</span><span class="p">(</span><span class="n">TrackletSource</span><span class="p">):</span>
+    
+
+<div class="viewcode-block" id="SimulatedTrackletSource.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SimulatedTrackletSource.__init__.html#pyod.sources.SimulatedTrackletSource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SimulatedTrackletSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SimulatedTrackletSource.accept"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SimulatedTrackletSource.accept.html#pyod.sources.SimulatedTrackletSource.accept">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Verify that the path can be loaded by this source handler</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">SourcePath</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Can only check acceptance of path objects, not &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">ptype</span> <span class="o">==</span> <span class="s1">&#39;ram&#39;</span><span class="p">:</span>
+                <span class="n">bool_</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+                <span class="n">dt_comp</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">SimulatedTrackletSource</span><span class="o">.</span><span class="n">dtype</span><span class="p">]</span>
+                <span class="n">bool_</span> <span class="o">=</span> <span class="n">bool_</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dt_comp</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">))</span>
+                <span class="k">return</span> <span class="n">bool_</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="SimulatedTrackletSource.load"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SimulatedTrackletSource.load.html#pyod.sources.SimulatedTrackletSource.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;meta&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span></div></div>
+
+
+
+<div class="viewcode-block" id="StateSource"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.StateSource.html#pyod.sources.StateSource">[docs]</a><span class="k">class</span> <span class="nc">StateSource</span><span class="p">(</span><span class="n">ObservationSource</span><span class="p">):</span>
+    <span class="n">dtype</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;datetime64[us]&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;vx&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;vy&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;vz&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;cov&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="mi">6</span><span class="p">)),</span>
+        <span class="p">(</span><span class="s1">&#39;x_sd&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;y_sd&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;z_sd&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;vx_sd&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;vy_sd&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;vz_sd&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">),</span>
+    <span class="p">]</span>
+    
+    <span class="n">REQUIRED_META</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;frame&#39;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+<div class="viewcode-block" id="StateSource.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.StateSource.__init__.html#pyod.sources.StateSource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">StateSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="SimulatedStateSource"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SimulatedStateSource.html#pyod.sources.SimulatedStateSource">[docs]</a><span class="k">class</span> <span class="nc">SimulatedStateSource</span><span class="p">(</span><span class="n">StateSource</span><span class="p">):</span>
+
+
+<div class="viewcode-block" id="SimulatedStateSource.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SimulatedStateSource.__init__.html#pyod.sources.SimulatedStateSource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SimulatedStateSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SimulatedStateSource.accept"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SimulatedStateSource.accept.html#pyod.sources.SimulatedStateSource.accept">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Verify that the path can be loaded by this source handler</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">SourcePath</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Can only check acceptance of path objects, not &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">ptype</span> <span class="o">==</span> <span class="s1">&#39;ram&#39;</span><span class="p">:</span>
+                <span class="n">bool_</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+                <span class="n">dt_comp</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="ow">in</span> <span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">dt</span> <span class="ow">in</span> <span class="n">SimulatedStateSource</span><span class="o">.</span><span class="n">dtype</span><span class="p">]</span>
+                <span class="n">bool_</span> <span class="o">=</span> <span class="n">bool_</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dt_comp</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">))</span>
+                <span class="k">return</span> <span class="n">bool_</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="SimulatedStateSource.load"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SimulatedStateSource.load.html#pyod.sources.SimulatedStateSource.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;meta&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span></div></div>
+
+
+<div class="viewcode-block" id="TrackingDataMessageSource"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.TrackingDataMessageSource.html#pyod.sources.TrackingDataMessageSource">[docs]</a><span class="k">class</span> <span class="nc">TrackingDataMessageSource</span><span class="p">(</span><span class="n">TrackletSource</span><span class="p">):</span>
+
+    <span class="n">ext</span> <span class="o">=</span> <span class="s1">&#39;tdm&#39;</span>
+
+<div class="viewcode-block" id="TrackingDataMessageSource.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.TrackingDataMessageSource.__init__.html#pyod.sources.TrackingDataMessageSource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">TrackingDataMessageSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">SourcePath</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Can only check acceptance of path objects, not &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">TrackingDataMessageSource</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> cannot load path of type &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">TrackingDataMessageSource</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">ptype</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="TrackingDataMessageSource.accept"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.TrackingDataMessageSource.accept.html#pyod.sources.TrackingDataMessageSource.accept">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Verify that the path can be loaded by this source handler</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">SourcePath</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Can only check acceptance of path objects, not &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">ptype</span> <span class="o">==</span> <span class="s1">&#39;file&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">TrackingDataMessageSource</span><span class="o">.</span><span class="n">ext</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="TrackingDataMessageSource.load"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.TrackingDataMessageSource.load.html#pyod.sources.TrackingDataMessageSource.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="n">odata</span><span class="p">,</span> <span class="n">ometa</span> <span class="o">=</span> <span class="n">ccsds</span><span class="o">.</span><span class="n">read_ccsds</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">sort_obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">odata</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">])</span>
+        <span class="n">odata</span> <span class="o">=</span> <span class="n">odata</span><span class="p">[</span><span class="n">sort_obs</span><span class="p">]</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">odata</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">TrackletSource</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">odata</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">odata</span><span class="p">[</span><span class="s1">&#39;range&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1e3</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;v&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">odata</span><span class="p">[</span><span class="s1">&#39;doppler_instantaneous&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1e3</span>
+
+        <span class="c1">#for ind in range(len(data)):</span>
+        <span class="c1">#    lt = 0.5*data[&#39;r&#39;][ind]/scipy.constants.c</span>
+        <span class="c1">#    lt = np.timedelta64( int(lt*1e9),&#39;ns&#39;)</span>
+        <span class="c1">#    data[&#39;date&#39;][ind] += lt</span>
+
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;r_sd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">odata</span><span class="p">[</span><span class="s1">&#39;range_err&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1e3</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;v_sd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">odata</span><span class="p">[</span><span class="s1">&#39;doppler_instantaneous_err&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">1e3</span>
+
+        <span class="n">_cm</span> <span class="o">=</span> <span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;COMMENT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">com</span> <span class="ow">in</span> <span class="n">_cm</span><span class="p">:</span>
+            <span class="n">tx_ind</span> <span class="o">=</span> <span class="n">com</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;TX_ECEF&#39;</span><span class="p">)</span>
+            <span class="n">rx_ind</span> <span class="o">=</span> <span class="n">com</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;RX_ECEF&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">tx_ind</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">tx_ecef</span> <span class="o">=</span> <span class="n">com</span><span class="p">[</span> <span class="n">com</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;(&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span> <span class="p">:</span> <span class="n">com</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;)&#39;</span><span class="p">)]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+                <span class="n">tx_ecef</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">tx_ecef</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">rx_ind</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">rx_ecef</span> <span class="o">=</span> <span class="n">com</span><span class="p">[</span> <span class="n">com</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;(&#39;</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span> <span class="p">:</span> <span class="n">com</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;)&#39;</span><span class="p">)]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+                <span class="n">rx_ecef</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">rx_ecef</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        
+
+        <span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;fname&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;tx_ecef&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tx_ecef</span>
+        <span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;rx_ecef&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rx_ecef</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;PARTICIPANT_2&#39;</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">ometa</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span></div></div>
+
+
+
+<div class="viewcode-block" id="HDFSTrackletSource"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.HDFSTrackletSource.html#pyod.sources.HDFSTrackletSource">[docs]</a><span class="k">class</span> <span class="nc">HDFSTrackletSource</span><span class="p">(</span><span class="n">TrackletSource</span><span class="p">):</span>
+
+    <span class="n">ext</span> <span class="o">=</span> <span class="s1">&#39;h5&#39;</span>
+
+<div class="viewcode-block" id="HDFSTrackletSource.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.HDFSTrackletSource.__init__.html#pyod.sources.HDFSTrackletSource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">HDFSTrackletSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">SourcePath</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Can only check acceptance of path objects, not &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HDFSTrackletSource</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> cannot load path of type &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">HDFSTrackletSource</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">ptype</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="HDFSTrackletSource.accept"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.HDFSTrackletSource.accept.html#pyod.sources.HDFSTrackletSource.accept">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Verify that the path can be loaded by this source handler</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">SourcePath</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Can only check acceptance of path objects, not &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">ptype</span> <span class="o">==</span> <span class="s1">&#39;file&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">HDFSTrackletSource</span><span class="o">.</span><span class="n">ext</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="HDFSTrackletSource.load"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.HDFSTrackletSource.load.html#pyod.sources.HDFSTrackletSource.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">ho</span><span class="p">:</span>
+
+            <span class="n">ometa</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">sort_obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">ho</span><span class="p">[</span><span class="s2">&quot;m_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">sort_obs</span><span class="p">),),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">TrackletSource</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">internal_datetime</span><span class="o">.</span><span class="n">unix2npdt</span><span class="p">(</span><span class="n">ho</span><span class="p">[</span><span class="s2">&quot;m_time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">[</span><span class="n">sort_obs</span><span class="p">])</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ho</span><span class="p">[</span><span class="s2">&quot;m_range&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">*</span><span class="mf">1e3</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;v&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ho</span><span class="p">[</span><span class="s2">&quot;m_range_rate&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">*</span><span class="mf">1e3</span>
+
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;r_sd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ho</span><span class="p">[</span><span class="s2">&quot;m_range_std&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">*</span><span class="mf">1e3</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;v_sd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ho</span><span class="p">[</span><span class="s2">&quot;m_range_rate_std&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="o">*</span><span class="mf">1e3</span>
+
+            <span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;fname&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;tx_ecef&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ho</span><span class="p">[</span><span class="s2">&quot;tx_loc&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;rx_ecef&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ho</span><span class="p">[</span><span class="s2">&quot;rx_loc&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ho</span><span class="p">[</span><span class="s2">&quot;oid&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">ometa</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span></div></div>
+
+
+
+
+<div class="viewcode-block" id="TwoLineElementSource"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.TwoLineElementSource.html#pyod.sources.TwoLineElementSource">[docs]</a><span class="k">class</span> <span class="nc">TwoLineElementSource</span><span class="p">(</span><span class="n">StateSource</span><span class="p">):</span>
+
+    <span class="n">ext</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="TwoLineElementSource.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.TwoLineElementSource.__init__.html#pyod.sources.TwoLineElementSource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">TwoLineElementSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">SourcePath</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Can only check acceptance of path objects, not &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">TwoLineElementSource</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> cannot load path of type &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">TwoLineElementSource</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">ptype</span><span class="p">))</span></div></div>
+
+
+
+<div class="viewcode-block" id="OrbitEphemerisMessageSource"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.OrbitEphemerisMessageSource.html#pyod.sources.OrbitEphemerisMessageSource">[docs]</a><span class="k">class</span> <span class="nc">OrbitEphemerisMessageSource</span><span class="p">(</span><span class="n">StateSource</span><span class="p">):</span>
+
+    <span class="n">ext</span> <span class="o">=</span> <span class="s1">&#39;oem&#39;</span>
+
+<div class="viewcode-block" id="OrbitEphemerisMessageSource.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.OrbitEphemerisMessageSource.__init__.html#pyod.sources.OrbitEphemerisMessageSource.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OrbitEphemerisMessageSource</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">SourcePath</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Can only check acceptance of path objects, not &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">OrbitEphemerisMessageSource</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> cannot load path of type &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">OrbitEphemerisMessageSource</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">ptype</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="OrbitEphemerisMessageSource.accept"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.OrbitEphemerisMessageSource.accept.html#pyod.sources.OrbitEphemerisMessageSource.accept">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Verify that the path can be loaded by this source handler</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">SourcePath</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Can only check acceptance of path objects, not &quot;</span><span class="si">{}</span><span class="s1">&quot;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">ptype</span> <span class="o">==</span> <span class="s1">&#39;file&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">path</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="n">OrbitEphemerisMessageSource</span><span class="o">.</span><span class="n">ext</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="OrbitEphemerisMessageSource.load"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.OrbitEphemerisMessageSource.load.html#pyod.sources.OrbitEphemerisMessageSource.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="n">odata</span><span class="p">,</span> <span class="n">ometa</span> <span class="o">=</span> <span class="n">ccsds</span><span class="o">.</span><span class="n">read_oem</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">sort_obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">odata</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">])</span>
+        <span class="n">odata</span> <span class="o">=</span> <span class="n">odata</span><span class="p">[</span><span class="n">sort_obs</span><span class="p">]</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">odata</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">StateSource</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">odata</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">odata</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="s1">&#39;cov&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;cov&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;cov&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data</span><span class="p">[</span><span class="s1">&#39;cov&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">([</span><span class="mf">1e3</span><span class="p">]</span><span class="o">*</span><span class="mi">3</span> <span class="o">+</span> <span class="p">[</span><span class="mf">10.0</span><span class="p">]</span><span class="o">*</span><span class="mi">3</span><span class="p">)</span>
+
+        <span class="c1">#no cov is given for OEM so just assume constant or use user input</span>
+        <span class="k">for</span> <span class="n">ind</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">([</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;vx&#39;</span><span class="p">,</span> <span class="s1">&#39;vy&#39;</span><span class="p">,</span> <span class="s1">&#39;vz&#39;</span><span class="p">]):</span>
+            <span class="k">for</span> <span class="n">rowi</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)):</span>
+                <span class="n">data</span><span class="p">[</span><span class="n">var</span> <span class="o">+</span> <span class="s1">&#39;_sd&#39;</span><span class="p">][</span><span class="n">rowi</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;cov&#39;</span><span class="p">][</span><span class="n">rowi</span><span class="p">][</span><span class="n">ind</span><span class="p">,</span> <span class="n">ind</span><span class="p">]</span>
+
+        <span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;fname&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;frame&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;REF_FRAME&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">ometa</span><span class="p">[</span><span class="s1">&#39;OBJECT_ID&#39;</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">ometa</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span></div></div>
+
+
+<div class="viewcode-block" id="SourcePath"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourcePath.html#pyod.sources.SourcePath">[docs]</a><span class="k">class</span> <span class="nc">SourcePath</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="SourcePath.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourcePath.__init__.html#pyod.sources.SourcePath.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">ptype</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ptype</span> <span class="ow">in</span> <span class="n">_ptypes</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;ptype &quot;</span><span class="si">{}</span><span class="s1">&quot; not recognized&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ptype</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ptype</span> <span class="o">=</span> <span class="n">ptype</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ptype</span> <span class="o">==</span> <span class="s1">&#39;ram&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ptype</span> <span class="o">+</span> <span class="s1">&#39;: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ptype</span> <span class="o">+</span> <span class="s1">&#39;: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SourcePath.recursive_folder"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourcePath.recursive_folder.html#pyod.sources.SourcePath.recursive_folder">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">recursive_folder</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">exts</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">):</span>
+            <span class="n">folder</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+
+        <span class="n">paths</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">folder</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;/&#39;</span><span class="p">:</span>
+            <span class="n">_folder</span> <span class="o">=</span> <span class="n">folder</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">_folder</span> <span class="o">=</span> <span class="n">folder</span>
+        
+        <span class="n">lst</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">_folder</span> <span class="o">+</span> <span class="s1">&#39;/*&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">pth</span> <span class="ow">in</span> <span class="n">lst</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">pth</span><span class="p">):</span>
+                <span class="n">paths</span> <span class="o">+=</span> <span class="n">SourcePath</span><span class="o">.</span><span class="n">recursive_folder</span><span class="p">(</span><span class="n">pth</span><span class="p">,</span> <span class="n">exts</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">pth</span><span class="p">):</span>
+                <span class="n">_ext</span> <span class="o">=</span> <span class="n">pth</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">sep</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">_ext</span> <span class="ow">in</span> <span class="n">exts</span><span class="p">:</span>
+                    <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">SourcePath</span><span class="p">(</span><span class="n">pth</span><span class="p">,</span> <span class="s1">&#39;file&#39;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">paths</span></div>
+
+
+<div class="viewcode-block" id="SourcePath.from_list"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourcePath.from_list.html#pyod.sources.SourcePath.from_list">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_list</span><span class="p">(</span><span class="n">input_list</span><span class="p">,</span> <span class="n">ptype</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">SourcePath</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">ptype</span><span class="p">)</span> <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">input_list</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="SourcePath.from_glob"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourcePath.from_glob.html#pyod.sources.SourcePath.from_glob">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">from_glob</span><span class="p">(</span><span class="n">glob_arg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">glob_arg</span><span class="p">,</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">):</span>
+            <span class="n">glob_arg</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">glob_arg</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">[</span><span class="n">SourcePath</span><span class="p">(</span><span class="n">str_path</span><span class="p">,</span> <span class="s1">&#39;file&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">str_path</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">glob_arg</span><span class="p">)]</span></div></div>
+
+
+
+
+<div class="viewcode-block" id="SourceCollection"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourceCollection.html#pyod.sources.SourceCollection">[docs]</a><span class="k">class</span> <span class="nc">SourceCollection</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
+
+    <span class="n">sources</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">TrackingDataMessageSource</span><span class="p">,</span>
+        <span class="n">HDFSTrackletSource</span><span class="p">,</span>
+        <span class="n">OrbitEphemerisMessageSource</span><span class="p">,</span>
+        <span class="n">SimulatedTrackletSource</span><span class="p">,</span>
+        <span class="n">SimulatedStateSource</span><span class="p">,</span>
+    <span class="p">]</span>
+
+<div class="viewcode-block" id="SourceCollection.__init__"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourceCollection.__init__.html#pyod.sources.SourceCollection.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">paths</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;paths&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;paths&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="k">del</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;paths&#39;</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">SourceCollection</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SourceCollection.filter"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourceCollection.filter.html#pyod.sources.SourceCollection.filter">[docs]</a>    <span class="k">def</span> <span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_id</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">[:]:</span>
+            <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">index</span> <span class="o">!=</span> <span class="n">object_id</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span></div>
+    
+    <span class="c1">#implement copy and deepcopy instead of this</span>
+<div class="viewcode-block" id="SourceCollection.get"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourceCollection.get.html#pyod.sources.SourceCollection.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">object_id</span><span class="p">):</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">SourceCollection</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">obj</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">,</span> <span class="bp">self</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">index</span> <span class="o">==</span> <span class="n">object_id</span><span class="p">:</span>
+                <span class="n">sub</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+                <span class="n">sub</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sub</span></div>
+    
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;Loaded </span><span class="si">{}</span><span class="s1"> items from </span><span class="si">{}</span><span class="s1"> paths&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="SourceCollection.details"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourceCollection.details.html#pyod.sources.SourceCollection.details">[docs]</a>    <span class="k">def</span> <span class="nf">details</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="s1">&#39;-&#39;</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">_str</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">_str</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">_str</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">path</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> data points &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">data</span><span class="p">)))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;-- META DATA&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39; - </span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SourceCollection.pick_source"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourceCollection.pick_source.html#pyod.sources.SourceCollection.pick_source">[docs]</a>    <span class="k">def</span> <span class="nf">pick_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">source</span> <span class="ow">in</span> <span class="n">SourceCollection</span><span class="o">.</span><span class="n">sources</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">source</span><span class="o">.</span><span class="n">accept</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">source</span></div>
+
+<div class="viewcode-block" id="SourceCollection.load"><a class="viewcode-back" href="../../_autodoc/pyod/pyod.sources.SourceCollection.load.html#pyod.sources.SourceCollection.load">[docs]</a>    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="p">[:]</span>
+        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pick_source</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;The path &quot;</span><span class="si">{}</span><span class="s1">&quot; could not be used by any supported source&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">source</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">))</span></div></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Python 0.1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019-2020, Daniel Kastinen.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+    </div>
+  </body>
+</html>
