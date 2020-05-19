@@ -27,6 +27,12 @@ _ptypes = [
     'ram',
 ]
 
+_sources = []
+
+def register_source(cls):
+    global _sources
+    _sources.append(cls)
+
 
 class ObservationSource(object):
     
@@ -126,7 +132,9 @@ class SimulatedTrackletSource(TrackletSource):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'ram':
-                bool_ = isinstance(path.data['data'], np.ndarray)
+                bool_ = isinstance(path.data['data'], np.ndarray) and path.data['data'].dtype.names is not None
+                if not bool_:
+                    return False
                 dt_comp = [name[0] in path.data['data'].dtype.names for name in SimulatedTrackletSource.dtype]
                 bool_ = bool_ and np.all(np.array(dt_comp, dtype=np.bool))
                 return bool_
@@ -181,8 +189,10 @@ class SimulatedStateSource(StateSource):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'ram':
-                bool_ = isinstance(path.data['data'], np.ndarray)
-                dt_comp = [name in path.data['data'].dtype.names for name, dt in SimulatedStateSource.dtype]
+                bool_ = isinstance(path.data['data'], np.ndarray) and path.data['data'].dtype.names is not None
+                if not bool_:
+                    return False
+                dt_comp = [name[0] in path.data['data'].dtype.names for name in SimulatedStateSource.dtype]
                 bool_ = bool_ and np.all(np.array(dt_comp, dtype=np.bool))
                 return bool_
             else:
@@ -294,41 +304,24 @@ class HDFSTrackletSource(TrackletSource):
         with h5py.File(path, 'r') as ho:
 
             ometa = {}
-            sort_obs = np.argsort(ho["m_time"].value)
+            sort_obs = np.argsort(ho["m_time"][()])
 
             data = np.empty((len(sort_obs),), dtype=TrackletSource.dtype)
 
-            data['date'] = internal_datetime.unix2npdt(ho["m_time"].value[sort_obs])
-            data['r'] = ho["m_range"].value*1e3
-            data['v'] = ho["m_range_rate"].value*1e3
+            data['date'] = internal_datetime.unix2npdt(ho["m_time"][()][sort_obs])
+            data['r'] = ho["m_range"][()]*1e3
+            data['v'] = ho["m_range_rate"][()]*1e3
 
-            data['r_sd'] = ho["m_range_std"].value*1e3
-            data['v_sd'] = ho["m_range_rate_std"].value*1e3
+            data['r_sd'] = ho["m_range_std"][()]*1e3
+            data['v_sd'] = ho["m_range_rate_std"][()]*1e3
 
             ometa['fname'] = path.split(os.path.sep)[-1]
-            ometa['tx_ecef'] = ho["tx_loc"].value
-            ometa['rx_ecef'] = ho["rx_loc"].value
+            ometa['tx_ecef'] = ho["tx_loc"][()]
+            ometa['rx_ecef'] = ho["rx_loc"][()]
 
-            self.index = int(ho["oid"].value)
+            self.index = int(ho["oid"][()])
             self.meta = ometa
             self.data = data
-
-
-
-
-class TwoLineElementSource(StateSource):
-
-    ext = None
-
-    def __init__(self, path, **kwargs):
-        raise NotImplementedError()
-
-        super(TwoLineElementSource, self).__init__(path, **kwargs)
-
-        if not isinstance(path, SourcePath):
-            raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
-        if not TwoLineElementSource.accept(path):
-            raise TypeError('{} cannot load path of type "{}"'.format(TwoLineElementSource.__name__, path.ptype))
 
 
 
@@ -438,22 +431,20 @@ class SourcePath(object):
 
         return [SourcePath(str_path, 'file') for str_path in glob.glob(glob_arg)]
 
-
-
+_sources += [
+    TrackingDataMessageSource,
+    HDFSTrackletSource,
+    OrbitEphemerisMessageSource,
+    SimulatedTrackletSource,
+    SimulatedStateSource,
+]
 
 class SourceCollection(list):
 
-    sources = [
-        TrackingDataMessageSource,
-        HDFSTrackletSource,
-        OrbitEphemerisMessageSource,
-        SimulatedTrackletSource,
-        SimulatedStateSource,
-    ]
-
     def __init__(self, *args, **kwargs):
         self.paths = kwargs.get('paths', [])
-        
+        self.sources = _sources
+
         if 'paths' in kwargs:
             del kwargs['paths']
 
@@ -496,7 +487,7 @@ class SourceCollection(list):
 
 
     def pick_source(self, path):
-        for source in SourceCollection.sources:
+        for source in self.sources:
             if source.accept(path):
                 return source
 

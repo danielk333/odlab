@@ -8,6 +8,7 @@ import numpy as np
 import pathlib
 
 from pyod import SourceCollection, SourcePath
+import pyod.sources as src
 
 
 data_dir = '.' / pathlib.Path(__file__).parents[0] / 'example_data'
@@ -32,13 +33,13 @@ def example_wrapper(text):
 @example_wrapper('Loading sources from RAM')
 def example_ram_data():
     data = [{
-            'data': np.array([]),
-            'meta': {},
+            'data': np.array([], dtype=src.SimulatedStateSource.dtype),
+            'meta': {'frame': None},
             'index': 42,
         },
         {
-            'data': np.array([]),
-            'meta': {},
+            'data': np.array([], dtype=src.SimulatedStateSource.dtype),
+            'meta': {'frame': None},
             'index': 43,
         }
     ]
