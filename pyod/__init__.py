@@ -5,8 +5,8 @@
 '''
 
 from .sources import SourceCollection, SourcePath, register_source
-from .models import ForwardModel, EstimatedState
-from .posterior import Posterior
+from .models import ForwardModel, EstimatedState, RadarPair
+from .posterior import Posterior, PosteriorParameters
 from .posterior import OptimizeLeastSquares
 from .posterior import MCMCLeastSquares
 
@@ -19,6 +19,7 @@ __all__ = [
     'RadarPair',
     'EstimatedState',
     'Posterior',
+    'PosteriorParameters',
     'OptimizeLeastSquares',
     'MCMCLeastSquares',
     'register_source',

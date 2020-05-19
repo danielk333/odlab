@@ -62,7 +62,7 @@ class PosteriorParameters(object):
 
         with h5py.File(_path, 'r') as hf:
             results.variables = hf.attrs['variables'].tolist()
-            results.date = dpt.mjd2npdt(hf.attrs['date'])
+            results.date = hf['date'][()].view('<M8[us]')
             results.trace = hf['trace'][()]
             results.MAP = hf['MAP'][()]
             results.residuals = []
@@ -119,8 +119,9 @@ class PosteriorParameters(object):
                 for key in grp:
                     self.residuals.append(grp['{}'.format(ind)][()])
             if self.date is not None:
-                if self.date != dpt.mjd2npdt(hf.attrs['date']):
-                    raise Exception('Cannot load data from another epoch "{}" vs "{}"'.format(self.date, dpt.mjd2npdt(hf.attrs['date'])))
+                date_ = hf['date'][()].view('<M8[us]')
+                if self.date != date_:
+                    raise Exception('Cannot load data from another epoch "{}" vs "{}"'.format(self.date, date_))
 
 
 
@@ -138,7 +139,7 @@ class PosteriorParameters(object):
             hf.attrs['variables'] = self.variables
             hf['trace'] = self.trace
             hf['MAP'] = self.MAP
-            hf.attrs['date'] = dpt.npdt2mjd(self.date)
+            hf['date'] = self.date.astype('<i8')
 
             grp = hf.create_group("residuals")
             for ind, resid in enumerate(self.residuals):

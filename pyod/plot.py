@@ -86,14 +86,17 @@ def scatter_trace(results, **kwargs):
 
     thin = kwargs.get('thin', None)
 
+    km_vars = ['x','y','z','vx','vy','vz']
+
     trace2 = results.trace.copy()
-    for var in ['x','y','z','vx','vy','vz']:
+    for var in km_vars:
         if var in results.variables:
             trace2[var] *= 1e-3
     if thin is not None:
         trace2 = trace2[thin]
     df = pandas.DataFrame.from_records(trace2)
-    
+    colnames = df.columns.copy()
+
     cols = kwargs.get('columns', {
         'x':'x [km]',
         'y':'y [km]',
@@ -107,6 +110,21 @@ def scatter_trace(results, **kwargs):
 
     axes = scatter_matrix(df, alpha=kwargs.get('alpha', 0.01), figsize=(15,15))
 
+    reference = kwargs.get('reference', None)
+
+    cols_ = len(colnames)
+
+    if reference is not None:
+        reference = reference.copy()
+        for var in reference.dtype.names:
+            if var in km_vars:
+                reference[var] *= 1e-3
+        for colx in range(cols_):
+            for coly in range(cols_):
+                if colx == coly:
+                    axes[colx][coly].axvline(x=reference[colnames[colx]][0], ymin=0, ymax=1, color='r')
+                else:
+                    axes[colx][coly].plot(reference[colnames[colx]][0], reference[colnames[coly]][0], 'or')
     return axes
 
 
@@ -121,6 +139,8 @@ def trace(results, **kwargs):
                 axis_var += ['${}$ [km]'.format(var)]
             else:
                 axis_var += [var]
+
+    reference = kwargs.get('reference', None)
 
     plots = []
     for ind, var in enumerate(results.variables):
@@ -143,6 +163,10 @@ def trace(results, **kwargs):
             ax = fig.add_subplot(100*(len(results.variables) - 6) + ind - 5 + 10)
         plots[-1]['axes'].append(ax)
         ax.plot(results.trace[var]*coef)
+
+        if reference is not None:
+            ax.axhline(reference[var][0]*coef, 0, 1, color='r')
+
         ax.set(
             xlabel='Iteration',
             ylabel='{}'.format(axis_var[ind]),

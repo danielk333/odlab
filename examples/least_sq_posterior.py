@@ -41,9 +41,9 @@ v_err = 1e2
 
 ski_ecef = geodetic2ecef(69.34023844, 20.313166, 0.0)
 kar_ecef = geodetic2ecef(68.463862, 22.458859, 0.0)
+kai_ecef = geodetic2ecef(68.148205, 19.769894, 0.0)
 
-# rx_list = [ski_ecef, kar_ecef]
-rx_list = [ski_ecef]
+rx_list = [ski_ecef, kar_ecef, kai_ecef]
 
 source_data = []
 
@@ -106,8 +106,8 @@ post = OptimizeLeastSquares(
     method = 'Nelder-Mead',
     options = dict(
         maxiter = 10000,
-        disp = True,
-        xatol = 1e1,
+        disp = False,
+        xatol = 1e-3,
     ),
 )
 
@@ -119,9 +119,9 @@ print('True error:')
 for var in variables:
     print('{:<3}: {:.3f}'.format(var, (post.results.MAP[var][0] - true_state[var][0])*1e-3))
 
-orbits(post, true=true_state)
-residuals(post, [state0_named, true_state,post.results.MAP], ['Start', 'True', 'MAP'], ['-b', '-r', '-g'], absolute=False)
-residuals(post, [state0_named, true_state,post.results.MAP], ['Start', 'True', 'MAP'], ['-b', '-r', '-g'], absolute=True)
+# orbits(post, true=true_state)
+# residuals(post, [state0_named, true_state,post.results.MAP], ['Start', 'True', 'MAP'], ['-b', '-r', '-g'], absolute=False)
+# residuals(post, [state0_named, true_state,post.results.MAP], ['Start', 'True', 'MAP'], ['-b', '-r', '-g'], absolute=True)
 
 plt.show()
 

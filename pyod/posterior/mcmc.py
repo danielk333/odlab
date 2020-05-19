@@ -27,7 +27,7 @@ def mpi_wrap(run):
     def new_run(self, *args, **kwargs):
 
         run_mpi = self.kwargs.get('MPI', True)
-        if run_mpi:
+        if run_mpi and comm.size > 1:
             steps = self.kwargs['steps']
             self.kwargs['steps'] = len(range(comm.rank, steps, comm.size))
 
