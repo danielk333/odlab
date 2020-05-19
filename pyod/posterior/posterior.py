@@ -63,12 +63,12 @@ class PosteriorParameters(object):
         with h5py.File(_path, 'r') as hf:
             results.variables = hf.attrs['variables'].tolist()
             results.date = dpt.mjd2npdt(hf.attrs['date'])
-            results.trace = hf['trace'].value
-            results.MAP = hf['MAP'].value
+            results.trace = hf['trace'][()]
+            results.MAP = hf['MAP'][()]
             results.residuals = []
             grp = hf['residuals/']
             for key in grp:
-                results.residuals.append(grp[key].value)
+                results.residuals.append(grp[key][()])
 
         return results
 
@@ -102,22 +102,22 @@ class PosteriorParameters(object):
             else:
                 self.variables = _vars
             if self.results is not None:
-                self.results = np.append(self.results, hf['results'].value)
+                self.results = np.append(self.results, hf['results'][()])
             else:
                 self.results = hf['results']
             if self.MAP is not None:
-                self.MAP = np.append(self.MAP, hf['MAP'].value)
+                self.MAP = np.append(self.MAP, hf['MAP'][()])
             else:
                 self.MAP = hf['MAP']
             if self.residuals is not None:
                 grp = hf['residuals/']
                 for key in grp:
-                    results.residuals.append(grp['{}'.format(ind)].value)
+                    results.residuals.append(grp['{}'.format(ind)][()])
             else:
                 self.residuals = []
                 grp = hf['residuals/']
                 for key in grp:
-                    self.residuals.append(grp['{}'.format(ind)].value)
+                    self.residuals.append(grp['{}'.format(ind)][()])
             if self.date is not None:
                 if self.date != dpt.mjd2npdt(hf.attrs['date']):
                     raise Exception('Cannot load data from another epoch "{}" vs "{}"'.format(self.date, dpt.mjd2npdt(hf.attrs['date'])))

@@ -36,8 +36,8 @@ mjd0 = 54952.08
 dates = mjd2npdt(mjd0 + t)
 params = dict(A= 0.1, m = 1.0)
 
-r_err = 1e3
-v_err = 1e2
+r_err = 0.5e3
+v_err = 0.1e3
 
 ski_ecef = geodetic2ecef(69.34023844, 20.313166, 0.0)
 kar_ecef = geodetic2ecef(68.463862, 22.458859, 0.0)
@@ -87,7 +87,7 @@ state0_named = np.empty((1,), dtype=dtype)
 true_state = np.empty((1,), dtype=dtype)
 start_err = [5e3]*3 + [1e2]*3
 
-step_arr = np.array([1e2,1e2,1e2,1e1,1e1,1e1], dtype=np.float64)*10
+step_arr = np.array([1e3,1e3,1e3,1e2,1e2,1e2], dtype=np.float64)
 step = np.empty((1,), dtype=dtype)
 for ind, name in enumerate(variables):
     state0_named[name] = state0[ind] + np.random.randn(1)*start_err[ind]
@@ -138,6 +138,8 @@ post = MCMCLeastSquares(
 post.run()
 
 print(post.results)
+
+post.results.save('.examples/example_data/results.h5')
 
 print('True error:')
 for var in variables:
