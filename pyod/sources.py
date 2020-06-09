@@ -97,7 +97,7 @@ class ObservationSource(object):
 
 
 
-class TrackletSource(ObservationSource):
+class RadarTracklet(ObservationSource):
     
     dtype = [
         ('date', 'datetime64[us]'),
@@ -113,15 +113,33 @@ class TrackletSource(ObservationSource):
     ]
 
     def __init__(self, path, **kwargs):
-        super(TrackletSource, self).__init__(path, **kwargs)
+        super(RadarTracklet, self).__init__(path, **kwargs)
 
+
+class OpticalTracklet(ObservationSource):
     
+    dtype = [
+        ('date', 'datetime64[us]'),
+        ('az', 'float64'),
+        ('el', 'float64'),
+        ('az_sd', 'float64'),
+        ('el_sd', 'float64'),
+    ]
 
-class SimulatedTrackletSource(TrackletSource):
+    REQUIRED_META = [
+        'ecef',
+    ]
+
+    def __init__(self, path, **kwargs):
+        super(OpticalTracklet, self).__init__(path, **kwargs)
+
+
+
+class SimulatedRadarTracklet(RadarTracklet):
     
 
     def __init__(self, path, **kwargs):
-        super(SimulatedTrackletSource, self).__init__(path, **kwargs)
+        super(SimulatedRadarTracklet, self).__init__(path, **kwargs)
 
 
     @staticmethod
@@ -135,7 +153,7 @@ class SimulatedTrackletSource(TrackletSource):
                 bool_ = isinstance(path.data['data'], np.ndarray) and path.data['data'].dtype.names is not None
                 if not bool_:
                     return False
-                dt_comp = [name[0] in path.data['data'].dtype.names for name in SimulatedTrackletSource.dtype]
+                dt_comp = [name[0] in path.data['data'].dtype.names for name in SimulatedRadarTracklet.dtype]
                 bool_ = bool_ and np.all(np.array(dt_comp, dtype=np.bool))
                 return bool_
             else:
@@ -204,17 +222,17 @@ class SimulatedStateSource(StateSource):
         self.index = self.path.data['index']
 
 
-class TrackingDataMessageSource(TrackletSource):
+class RadarTrackingDataMessage(RadarTracklet):
 
     ext = 'tdm'
 
     def __init__(self, path, **kwargs):
-        super(TrackingDataMessageSource, self).__init__(path, **kwargs)
+        super(RadarTrackingDataMessage, self).__init__(path, **kwargs)
 
         if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
-        if not TrackingDataMessageSource.accept(path):
-            raise TypeError('{} cannot load path of type "{}"'.format(TrackingDataMessageSource.__name__, path.ptype))
+        if not RadarTrackingDataMessage.accept(path):
+            raise TypeError('{} cannot load path of type "{}"'.format(RadarTrackingDataMessage.__name__, path.ptype))
 
 
     @staticmethod
@@ -225,7 +243,7 @@ class TrackingDataMessageSource(TrackletSource):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'file':
-                return path.data.split(os.path.sep)[-1].split('.')[-1] == TrackingDataMessageSource.ext
+                return path.data.split(os.path.sep)[-1].split('.')[-1] == RadarTrackingDataMessage.ext
             else:
                 return False
 
@@ -236,7 +254,7 @@ class TrackingDataMessageSource(TrackletSource):
         sort_obs = np.argsort(odata['date'])
         odata = odata[sort_obs]
 
-        data = np.empty(odata.shape, dtype=TrackletSource.dtype)
+        data = np.empty(odata.shape, dtype=RadarTracklet.dtype)
 
         data['date'] = odata['date']
         data['r'] = odata['range']*1e3
@@ -273,17 +291,17 @@ class TrackingDataMessageSource(TrackletSource):
 
 
 
-class HDFSTrackletSource(TrackletSource):
+class HDFSRadarTracklet(RadarTracklet):
 
     ext = 'h5'
 
     def __init__(self, path, **kwargs):
-        super(HDFSTrackletSource, self).__init__(path, **kwargs)
+        super(HDFSRadarTracklet, self).__init__(path, **kwargs)
 
         if not isinstance(path, SourcePath):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
-        if not HDFSTrackletSource.accept(path):
-            raise TypeError('{} cannot load path of type "{}"'.format(HDFSTrackletSource.__name__, path.ptype))
+        if not HDFSRadarTracklet.accept(path):
+            raise TypeError('{} cannot load path of type "{}"'.format(HDFSRadarTracklet.__name__, path.ptype))
 
 
     @staticmethod
@@ -294,7 +312,7 @@ class HDFSTrackletSource(TrackletSource):
             raise TypeError('Can only check acceptance of path objects, not "{}"'.format(type(path)))
         else:
             if path.ptype == 'file':
-                return path.data.split(os.path.sep)[-1].split('.')[-1] == HDFSTrackletSource.ext
+                return path.data.split(os.path.sep)[-1].split('.')[-1] == HDFSRadarTracklet.ext
             else:
                 return False
 
@@ -306,7 +324,7 @@ class HDFSTrackletSource(TrackletSource):
             ometa = {}
             sort_obs = np.argsort(ho["m_time"][()])
 
-            data = np.empty((len(sort_obs),), dtype=TrackletSource.dtype)
+            data = np.empty((len(sort_obs),), dtype=RadarTracklet.dtype)
 
             data['date'] = internal_datetime.unix2npdt(ho["m_time"][()][sort_obs])
             data['r'] = ho["m_range"][()]*1e3
@@ -432,10 +450,10 @@ class SourcePath(object):
         return [SourcePath(str_path, 'file') for str_path in glob.glob(glob_arg)]
 
 _sources += [
-    TrackingDataMessageSource,
-    HDFSTrackletSource,
+    RadarTrackingDataMessage,
+    HDFSRadarTracklet,
     OrbitEphemerisMessageSource,
-    SimulatedTrackletSource,
+    SimulatedRadarTracklet,
     SimulatedStateSource,
 ]
 
