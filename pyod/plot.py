@@ -277,15 +277,17 @@ def orbits(posterior, **kwargs):
 
 def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
 
-    residuals = []
+    ylabels = kwargs.get('ylabels', None)
+
+    residual_data = []
     for state in states:
-        residuals.append(
+        residual_data.append(
             posterior.residuals(state)
         )
     
-    plot_n = len(residuals[-1])
+    plot_n = len(posterior._models)
 
-    num = len(residuals)
+    num = len(residual_data)
 
     if plot_n > 3:
         _pltn = 3
@@ -296,6 +298,8 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
 
     _ind = 0
     for ind in range(plot_n):
+        variables = [x[0] for x in posterior._models[ind].dtype]
+
         if _ind == _pltn or _ind == 0:
             _ind = 0
             fig = plt.figure(figsize=(15,15))
@@ -305,50 +309,30 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
                 'axes': [],
             })
 
-        ax = fig.add_subplot(100*_pltn + 21 + _ind*2)
-        plots[-1]['axes'].append(ax)
+        for vari, var in enumerate(variables):
+            ax = fig.add_subplot(100*_pltn + len(variables)*10 + 1 + vari + _ind*len(variables))
+            plots[-1]['axes'].append(ax)
 
-        for sti in range(num):
-            if absolute:
-                lns = ax.semilogy(
-                    (residuals[sti][ind]['date'] - residuals[sti][ind]['date'][0])/np.timedelta64(1,'h'),
-                    np.abs(residuals[sti][ind]['residuals']['r']),
-                    styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
-                )
-            else:
-                lns = ax.plot(
-                    (residuals[sti][ind]['date'] - residuals[sti][ind]['date'][0])/np.timedelta64(1,'h'),
-                    residuals[sti][ind]['residuals']['r'],
-                    styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
-                )
-        ax.set(
-            xlabel='Time [h]',
-            ylabel='Range residuals [m]',
-            title='Model {}'.format(ind),
-        )
-        ax.legend()
+            for sti in range(num):
+                if absolute:
+                    lns = ax.semilogy(
+                        (residual_data[sti][ind]['date'] - residual_data[sti][ind]['date'][0])/np.timedelta64(1,'h'),
+                        np.abs(residual_data[sti][ind]['residuals'][var]),
+                        styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
+                    )
+                else:
+                    lns = ax.plot(
+                        (residual_data[sti][ind]['date'] - residual_data[sti][ind]['date'][0])/np.timedelta64(1,'h'),
+                        residual_data[sti][ind]['residuals'][var],
+                        styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
+                    )
+            ax.set(
+                xlabel='Time [h]',
+                ylabel=f'{var} residuals',
+                title='Model {}'.format(ind),
+            )
+            ax.legend()
 
-        ax = fig.add_subplot(100*_pltn + 21+_ind*2+1)
-        plots[-1]['axes'].append(ax)
-
-        for sti in range(num):
-            if absolute:
-                lns = ax.semilogy(
-                    (residuals[sti][ind]['date'] - residuals[sti][ind]['date'][0])/np.timedelta64(1,'h'),
-                    np.abs(residuals[sti][ind]['residuals']['v']),
-                    styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
-                )
-            else:
-                lns = ax.plot(
-                    (residuals[sti][ind]['date'] - residuals[sti][ind]['date'][0])/np.timedelta64(1,'h'),
-                    residuals[sti][ind]['residuals']['v'],
-                    styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
-                )
-        ax.set(
-            xlabel='Time [h]',
-            ylabel='Velocity residuals [m/s]',
-            title='Model {}'.format(ind),
-        )
         _ind += 1
 
     return plots
