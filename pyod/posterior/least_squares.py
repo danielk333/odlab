@@ -13,6 +13,7 @@ from tqdm import tqdm
 import scipy.stats
 import scipy.optimize as optimize
 import numpy as np
+from numpy.lib.recfunctions import structured_to_unstructured
 
 #Local import
 from .. import sources
@@ -116,13 +117,24 @@ class OptimizeLeastSquares(Posterior):
         for ind in range(n_tracklets):
             
             sim_data = self._models[ind].evaluate(state_)
+            _residuals = self._models[ind].distance(sim_data, tracklets[ind].data)
+            for name, _ in self._models[ind].dtype:
+                self._tmp_residulas[ind][name] = _residuals[name]
 
-            for name, nptype in self._models[ind].dtype:
-                _residuals = tracklets[ind].data[name] - sim_data[name]
+            num = len(self._models[ind].data['t'])
+            
+            if 'cov' in tracklets[ind].data.dtype.names:
+                names = tracklets[ind].meta['variables']
 
-                self._tmp_residulas[ind][name] = _residuals
-                
-                logsum += np.sum(-1.0*_residuals**2.0/(tracklets[ind].data[name + '_sd']**2.0))
+                for ti in range(num):
+                    xi = structured_to_unstructured(_residuals[ti][names])
+                    cov = tracklets[ind].data['cov'][ti]
+                    
+                    logsum += xi.T*np.linalg.inv(cov)*xi
+            else:
+                for name, _ in self._models[ind].dtype:
+                    logsum += np.sum(-1.0*_residuals[name]**2.0/(tracklets[ind].data[name + '_sd']**2.0))
+
         return 0.5*logsum
 
 
