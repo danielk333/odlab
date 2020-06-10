@@ -13,6 +13,7 @@ import numpy as np
 
 #Local import
 from . import datetime as datetime_local
+from . import coordinates
 
 
 class ForwardModel(object):
@@ -48,10 +49,23 @@ class ForwardModel(object):
 
         return states
 
+
     def evaluate(self, state):
         '''Evaluate forward model
         '''
         raise NotImplementedError()
+
+
+    def distance(self, sim, obs):
+        '''Calculates the distance between variable points
+
+        Override this method to include non-standard distance measures 
+        and coordinate transforms into posterior evaluation
+        '''
+        distances = np.empty(sim.shape, dtype=sim.dtype)
+        for name in sim.dtype.names:
+            distances[name] = obs[name] - sim[name]
+        return distances
 
 
 
@@ -96,14 +110,75 @@ class RadarPair(ForwardModel):
 
         states = self.get_states(state)
 
-        obs_dat = np.empty((len(self.data['t']), ), dtype=RadarPair.dtype)
+        sim_dat = np.empty((len(self.data['t']), ), dtype=RadarPair.dtype)
 
         for ind in range(len(self.data['t'])):
             r_obs, v_obs = RadarPair.generate_measurements(states[:,ind], self.data['rx_ecef'], self.data['tx_ecef'])
-            obs_dat[ind]['r'] = r_obs
-            obs_dat[ind]['v'] = v_obs
+            sim_dat[ind]['r'] = r_obs
+            sim_dat[ind]['v'] = v_obs
 
-        return obs_dat
+        return sim_dat
+
+
+
+class CameraStation(ForwardModel):
+
+    dtype = [
+        ('az', 'float64'),
+        ('el', 'float64'),
+    ]
+    
+    REQUIRED_DATA = ForwardModel.REQUIRED_DATA + [
+        'ecef',
+    ]
+
+    def __init__(self, data, propagator, **kwargs):
+        super(CameraStation, self).__init__(data, propagator, **kwargs)
+
+
+    @staticmethod
+    def generate_measurements(state_ecef, ecef, lat, lon):
+
+        x = state_ecef[:3] - ecef
+        r = coordinates.ecef2local(lat, lon, 0.0, x[0], x[1], x[2])
+        azel = coordinates.cart2azel(r)
+
+        return azel[0], azel[1]
+
+
+    def distance(self, sim, obs):
+        '''Calculates the distances between angles, includes wrapping
+        '''
+        distances = np.empty(sim.shape, dtype=sim.dtype)
+        
+        daz = obs['az'] - sim['az']
+        daz_tmp = np.mod(obs['az'] + 540.0, 360.0) - np.mod(sim['az'] + 540.0, 360.0)
+        inds_ = np.abs(daz) > np.abs(daz_tmp)
+        daz[inds_] = daz_tmp[inds_]
+        distances['el'] = obs['el'] - sim['el']
+        distances['az'] = daz
+
+        return distances
+
+        
+
+    def evaluate(self, state):
+        '''Evaluate forward model
+        '''
+
+        states = self.get_states(state)
+
+        geo = coordinates.ecef2geodetic(self.data['ecef'][0], self.data['ecef'][1], self.data['ecef'][2])
+
+        sim_dat = np.empty((len(self.data['t']), ), dtype=CameraStation.dtype)
+
+        for ind in range(len(self.data['t'])):
+            az_obs, el_obs = CameraStation.generate_measurements(states[:,ind], self.data['ecef'], geo[0], geo[1])
+            sim_dat[ind]['az'] = az_obs
+            sim_dat[ind]['el'] = el_obs
+
+        return sim_dat
+
 
 
 
@@ -128,12 +203,12 @@ class EstimatedState(ForwardModel):
 
         states = self.get_states(state)
 
-        obs_dat = np.empty((len(self.data['t']), ), dtype=EstimatedState.dtype)
+        sim_dat = np.empty((len(self.data['t']), ), dtype=EstimatedState.dtype)
 
         for ind in range(len(self.data['t'])):
             for dim, npd in enumerate(EstimatedState.dtype):
                 name, _ = npd
-                obs_dat[ind][name] = states[dim,ind]
+                sim_dat[ind][name] = states[dim,ind]
 
-        return obs_dat
+        return sim_dat
 
