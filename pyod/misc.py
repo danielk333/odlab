@@ -41,4 +41,4 @@ def propagate_results(t, date0, results, propagator, num = None, params = None):
         it += 1
         pbar.update(1)
 
-    return states
+    return states, num
