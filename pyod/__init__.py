@@ -10,6 +10,8 @@ from .posterior import Posterior, PosteriorParameters
 from .posterior import OptimizeLeastSquares
 from .posterior import MCMCLeastSquares
 
+from .misc import propagate_results
+
 __version__ = '0.1.0'
 
 __all__ = [
@@ -24,6 +26,7 @@ __all__ = [
     'OptimizeLeastSquares',
     'MCMCLeastSquares',
     'register_source',
+    'propagate_results',
 ]
 
 from .propagator import *

@@ -77,8 +77,6 @@ def autocorrelation(results, **kwargs):
     return plots
 
 
-
-
 def scatter_trace(results, **kwargs):
 
     if scatter_matrix is None:
