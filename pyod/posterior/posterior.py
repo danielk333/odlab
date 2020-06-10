@@ -11,7 +11,6 @@ import glob
 
 #Third party import
 import h5py
-from tqdm import tqdm
 import scipy
 import scipy.stats
 import scipy.optimize as optimize
