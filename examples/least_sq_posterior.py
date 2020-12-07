@@ -5,14 +5,14 @@
 '''
 
 from pyod import RadarPair
-from pyod import PropagatorOrekit
+from pyod import Orekit
 from pyod import OptimizeLeastSquares
 from pyod import SourceCollection
 from pyod import SourcePath
 from pyod.plot import orbits, residuals
 from pyod.datetime import mjd2npdt
 from pyod.coordinates import geodetic2ecef
-from pyod.sources import TrackletSource
+from pyod.sources import RadarTracklet
 
 import pathlib
 import numpy as np
@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 orekit_data = '/home/danielk/IRF/IRF_GITLAB/orekit_build/orekit-data-master.zip'
 
-prop = PropagatorOrekit(
+prop = Orekit(
     orekit_data = orekit_data, 
     settings=dict(
         in_frame='ITRF',
@@ -58,7 +58,7 @@ for rx in rx_list:
     radar = RadarPair(data, prop)
     sim_data = radar.evaluate(state0)
 
-    radar_data = np.empty((len(t),), dtype=TrackletSource.dtype)
+    radar_data = np.empty((len(t),), dtype=RadarTracklet.dtype)
     radar_data['date'] = dates
     radar_data['r'] = sim_data['r'] + np.random.randn(len(t))*r_err
     radar_data['v'] = sim_data['v'] + np.random.randn(len(t))*v_err

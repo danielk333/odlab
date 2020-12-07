@@ -173,6 +173,8 @@ class MCMCLeastSquares(OptimizeLeastSquares):
 
 
                 chain[ind] = xnow
+        else:
+            raise ValueError('No method found')
             
         chain = chain[self.kwargs['tune']:]
 

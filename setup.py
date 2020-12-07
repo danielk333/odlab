@@ -30,7 +30,6 @@ setuptools.setup(
     url='https://github.com/danielk333/pyod',
     classifiers=[
         'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: MPL 2.0',
         'Operating System :: OS Independent',
     ],
     install_requires=pip_req,

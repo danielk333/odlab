@@ -7,7 +7,7 @@ import os
 import pathlib
 
 from pyod import RadarPair
-from pyod import PropagatorOrekit
+from pyod import Orekit
 from pyod import MCMCLeastSquares, OptimizeLeastSquares
 from pyod import SourceCollection
 from pyod import SourcePath
@@ -15,7 +15,7 @@ from pyod import PosteriorParameters
 import pyod.plot as plots
 from pyod.datetime import mjd2npdt
 from pyod.coordinates import geodetic2ecef
-from pyod.sources import TrackletSource
+from pyod.sources import RadarTracklet
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -64,7 +64,7 @@ if os.path.isfile(results_data):
     results = PosteriorParameters.load_h5(results_data)
     init_results = PosteriorParameters.load_h5(init_data)
 else:
-    prop = PropagatorOrekit(
+    prop = RadarTracklet(
         orekit_data = orekit_data, 
         settings=dict(
             in_frame='ITRF',
@@ -87,7 +87,7 @@ else:
         radar = RadarPair(data, prop)
         sim_data = radar.evaluate(state0)
 
-        radar_data = np.empty((len(t),), dtype=TrackletSource.dtype)
+        radar_data = np.empty((len(t),), dtype=RadarTracklet.dtype)
         radar_data['date'] = dates
         radar_data['r'] = sim_data['r'] + np.random.randn(len(t))*r_err
         radar_data['v'] = sim_data['v'] + np.random.randn(len(t))*v_err

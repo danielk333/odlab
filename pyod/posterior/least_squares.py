@@ -14,7 +14,10 @@ import scipy.stats
 import scipy.optimize as optimize
 import numpy as np
 from numpy.lib.recfunctions import structured_to_unstructured
+from mpi4py import MPI
 
+
+comm = MPI.COMM_WORLD
 #Local import
 from .. import sources
 from .posterior import Posterior
@@ -162,7 +165,13 @@ class OptimizeLeastSquares(Posterior):
         
         print('\n{} running {}'.format(type(self).__name__, self.kwargs['method']))
 
-        pbar = tqdm(total=maxiter, ncols=100)
+        pbars = []
+        for pbar_id in range(comm.size):
+            pbars.append(tqdm(total=maxiter, ncols=100))
+        pbar = pbars[comm.rank]
+        for ind in range(comm.size):
+            if ind != comm.rank: pbars[ind].close()
+
         xhat = optimize.minimize(
             fun,
             start,

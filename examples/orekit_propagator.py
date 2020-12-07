@@ -8,15 +8,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from pyod.propagator import PropagatorOrekit
+from pyod.propagator import Orekit
 
 orekit_data = '/home/danielk/IRF/IRF_GITLAB/orekit_build/orekit-data-master.zip'
 
-prop = PropagatorOrekit(
+prop = Orekit(
     orekit_data = orekit_data, 
     settings=dict(
-        in_frame='ITRF',
-        out_frame='EME',
+        in_frame='Orekit-ITRF',
+        out_frame='Orekit-EME',
     )
 )
 

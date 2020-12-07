@@ -8,14 +8,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pyod import RadarPair
-from pyod.propagator import PropagatorOrekit
+from pyod.propagator import Orekit
 from pyod.datetime import mjd2npdt
 from pyod.coordinates import geodetic2ecef
 
 
 orekit_data = '/home/danielk/IRF/IRF_GITLAB/orekit_build/orekit-data-master.zip'
 
-prop = PropagatorOrekit(
+prop = Orekit(
     orekit_data = orekit_data, 
     settings=dict(
         in_frame='ITRF',
@@ -24,7 +24,7 @@ prop = PropagatorOrekit(
 )
 print(prop)
 
-state0 = np.array([-7100297.113,-3897715.442,18568433.707,86.771,-3407.231,2961.571,86.771,-3407.231,2961.571])
+state0 = np.array([-7100297.113,-3897715.442,18568433.707,86.771,-3407.231,2961.571])
 t = np.linspace(0,0.2,num=100)
 dates = mjd2npdt(53005 + t)
 
