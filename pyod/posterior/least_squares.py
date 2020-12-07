@@ -28,7 +28,7 @@ class OptimizeLeastSquares(Posterior):
 
     REQUIRED_DATA = [
         'sources',
-        'Model',
+        'Models',
         'date0',
         'params',
     ]
@@ -36,6 +36,7 @@ class OptimizeLeastSquares(Posterior):
     REQUIRED = [
         'start',
         'propagator',
+        'state_variables'
     ]
 
     OPTIONAL = {
@@ -57,11 +58,28 @@ class OptimizeLeastSquares(Posterior):
 
         self._models = []
 
-        for source in data['sources']:
+        st_var = self.kwargs['state_variables']
+        self._variable_to_state = []
+        self._param_to_state = []
+        self._variable_to_param = []
+        for din, sv in enumerate(st_var):
+            try:
+                vari = self.variables.index(sv)
+                self._variable_to_state.append((din, vari))
+            except ValueError:
+                self._param_to_state.append((din, sv))
+        for vari, var in enumerate(self.variables):
+            if var not in st_var:
+                self._variable_to_param.append((var, vari))
+
+
+        for source_ind, source in enumerate(data['sources']):
             if not isinstance(source, sources.ObservationSource):
                 raise ValueError('Non-observation data detected, "{}" not supported'.format(type(source)))
 
-            req_args = copy.copy(self.data['Model'].REQUIRED_DATA)
+            Model__ = self.data['Models'][source_ind]
+
+            req_args = copy.copy(Model__.REQUIRED_DATA)
             for arg in source.avalible_data():
                 if arg in req_args:
                     req_args.remove(arg)
@@ -75,7 +93,7 @@ class OptimizeLeastSquares(Posterior):
                 model_data[arg] = self.data[arg]
 
             model = source.generate_model(
-                Model=self.data['Model'],
+                Model=Model__,
                 **model_data
             )
             self._models.append(model)
@@ -86,6 +104,69 @@ class OptimizeLeastSquares(Posterior):
                 np.empty((len(self.data['sources'][ind].data),), dtype=self._models[ind].dtype)
             )
         
+
+    def model_jacobian(self, state0, deltas):
+        '''Calculate the observation and its numerical Jacobean of a state given the current models. 
+
+        #TODO: Docstring
+        '''
+
+        tracklets = self.data['sources']
+        n_sources = len(tracklets)
+
+        state_, params = self._get_state_param(state0)
+
+        meas_n = 0
+        data0 = []
+        for ind in range(n_sources):
+            data0 += [self._models[ind].evaluate(state_, **params)]
+            meas_n += len(self._models[ind].data['t'])*len(self._models[ind].dtype)
+
+        
+        Sigma = np.zeros([meas_n,], dtype=np.float64)
+
+        meas_ind0 = 0
+        for sc_ind in range(n_sources):
+            tn = len(self._models[sc_ind].data['t'])
+            var_ind = 0
+            for var, dt in self._models[sc_ind].dtype:
+
+                start_ind = meas_ind0 + var_ind*tn
+                end_ind = meas_ind0 + (var_ind + 1)*tn
+                Sigma[start_ind:end_ind] = tracklets[sc_ind].data[var + '_sd']**2.0
+
+                var_ind += 1
+            meas_ind0 += tn*len(self._models[sc_ind].dtype)
+
+
+        J = np.zeros([meas_n,len(self.variables)], dtype=np.float64)
+
+        for ind, var in enumerate(self.variables):
+
+            dstate = np.copy(state0)
+            dstate[var][0] = dstate[var][0] + deltas[ind]
+
+            dstate_, dparams = self._get_state_param(dstate)
+
+            meas_ind0 = 0
+            for sc_ind in range(n_sources):
+                ddata = self._models[sc_ind].evaluate(dstate_, **dparams)
+
+                tn = len(self._models[sc_ind].data['t'])
+                var_ind = 0
+                for var, dt in self._models[sc_ind].dtype:
+                    dvar = (ddata[var] - data0[sc_ind][var])/deltas[ind]
+
+                    start_ind = meas_ind0 + var_ind*tn
+                    end_ind = meas_ind0 + (var_ind + 1)*tn
+                    J[start_ind:end_ind, ind] = dvar
+
+                    var_ind += 1
+
+                meas_ind0 += tn*len(self._models[sc_ind].dtype)
+
+        return data0, J, Sigma
+
 
     def logprior(self, state):
         '''The logprior function
@@ -107,6 +188,25 @@ class OptimizeLeastSquares(Posterior):
         return logprob
 
 
+    def _get_state_param(self, state):
+        state_all = _named_to_enumerated(state, self.variables)
+
+        st_var = self.kwargs['state_variables']
+
+        state_ = np.empty((len(st_var),), dtype=np.float64)
+        params = copy.copy(self.data['params'])
+
+        for sti, vari in self._variable_to_state:
+            state_[sti] = state_all[vari]
+
+        for sti, var in self._param_to_state:
+            state_[sti] = self.data['params'][var]
+
+        for par, vari in self._variable_to_param:
+            params[par] = state_all[vari]
+
+        return state_, params
+
 
     def loglikelihood(self, state):
         '''The loglikelihood function
@@ -114,12 +214,13 @@ class OptimizeLeastSquares(Posterior):
 
         tracklets = self.data['sources']
         n_tracklets = len(tracklets)
-        state_ = _named_to_enumerated(state, self.variables)
+        
+        state_, params = self._get_state_param(state)
 
         logsum = 0.0
         for ind in range(n_tracklets):
             
-            sim_data = self._models[ind].evaluate(state_)
+            sim_data = self._models[ind].evaluate(state_, **params)
             _residuals = self._models[ind].distance(sim_data, tracklets[ind].data)
             for name, _ in self._models[ind].dtype:
                 self._tmp_residulas[ind][name] = _residuals[name]

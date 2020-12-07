@@ -77,13 +77,14 @@ class MCMCLeastSquares(OptimizeLeastSquares):
         },
         'prior': None,
         'tune': 1000,
-        'log_vars': [],
         'proposal': 'normal',
+        'jacobian_delta': 0.1,
     }
 
     def __init__(self, data, variables, **kwargs):
         super(MCMCLeastSquares, self).__init__(data, variables, **kwargs)
     
+
     @mpi_wrap
     def run(self):
         if self.kwargs['start'] is None and self.kwargs['prior'] is None:
@@ -103,8 +104,27 @@ class MCMCLeastSquares(OptimizeLeastSquares):
             accept = np.zeros((len(self.variables),), dtype=start.dtype)
             tries = np.zeros((len(self.variables),), dtype=start.dtype)
             
-            proposal_cov = np.eye(len(self.variables), dtype=np.float64)
-            proposal_mu = np.zeros((len(self.variables,)), dtype=np.float64)
+            if self.kwargs['proposal'] == 'normal':
+                proposal_cov = np.eye(len(self.variables), dtype=np.float64)
+                proposal_mu = np.zeros((len(self.variables,)), dtype=np.float64)
+                proposal_axis = np.eye(len(self.variables), dtype=np.float64)
+            elif self.kwargs['proposal'] == 'LinSigma':
+
+                deltas = self.kwargs['jacobian_delta']
+                if not isinstance(deltas, np.ndarray):
+                    deltas = np.ones((len(self.variables),), dtype=np.float64)*deltas
+
+                data0, J, Sigma_m_diag = self.model_jacobian(start, deltas)
+                Sigma_m_inv = np.diag(1.0/Sigma_m_diag)
+
+                Sigma_orb = np.linalg.inv(np.transpose(J) @ Sigma_m_inv @ J)
+
+                proposal_mu = np.zeros((len(self.variables,)), dtype=np.float64)
+                eigs, proposal_axis = np.linalg.eig(Sigma_orb)
+                proposal_cov = np.diag(eigs)
+            else:
+                raise ValueError(f'proposal option "{self.kwargs["proposal"]}" not recognized')
+
 
             print('\n{} running {}'.format(type(self).__name__, self.kwargs['method']))
             pbars = []
@@ -120,14 +140,11 @@ class MCMCLeastSquares(OptimizeLeastSquares):
                 pi = int(np.floor(np.random.rand(1)*len(self.variables)))
                 var = self.variables[pi]
 
-                proposal = np.random.multivariate_normal(proposal_mu, proposal_cov)
-                
-                vstep = proposal[pi]*step[0][var]
+                proposal0 = np.random.multivariate_normal(proposal_mu, proposal_cov)
+                proposal = proposal0[pi]*proposal_axis[:,pi]
 
-                if var in self.kwargs['log_vars']:
-                    xtry[var] = 10.0**(np.log10(xtry[var]) + vstep)
-                else:
-                    xtry[var] += vstep
+                for vind, v in enumerate(self.variables):
+                    xtry[0][v] += proposal[vind]*step[0][var]
                 
                 logpost_try = self.evalute(xtry)
                 alpha = np.log(np.random.rand(1))

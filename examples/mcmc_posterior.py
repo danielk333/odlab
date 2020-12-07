@@ -6,8 +6,9 @@
 import os
 import pathlib
 
+import pyod
+
 from pyod import RadarPair
-from pyod import Orekit
 from pyod import MCMCLeastSquares, OptimizeLeastSquares
 from pyod import SourceCollection
 from pyod import SourcePath
@@ -50,9 +51,13 @@ variables = ['x', 'y', 'z', 'vx', 'vy', 'vz']
 dtype = [(name, 'float64') for name in variables]
 state0_named = np.empty((1,), dtype=dtype)
 true_state = np.empty((1,), dtype=dtype)
-start_err = [5e3]*3 + [1e2]*3
 
-step_arr = np.array([1e3,1e3,1e3,1e1,1e1,1e1], dtype=np.float64)
+start_err = [5e3]*3 + [1e2]*3
+#start_err = [0.0]*3 + [0.0]*3
+
+# step_arr = np.array([1e3,1e3,1e3,1e1,1e1,1e1], dtype=np.float64)
+step_arr = np.ones((6,), dtype=np.float64)*0.1
+
 step = np.empty((1,), dtype=dtype)
 for ind, name in enumerate(variables):
     state0_named[name] = state0[ind] + np.random.randn(1)*start_err[ind]
@@ -62,13 +67,19 @@ for ind, name in enumerate(variables):
 if os.path.isfile(results_data):
     results = PosteriorParameters.load_h5(results_data)
 else:
-    prop = Orekit(
-        orekit_data = orekit_data, 
+    # prop = pyod.propagator.Orekit(
+    #     orekit_data = orekit_data, 
+    #     settings=dict(
+    #         in_frame='ITRS',
+    #         out_frame='ITRS',
+    #         drag_force=False,
+    #         radiation_pressure=False,
+    #     )
+    # )
+    prop = pyod.propagator.SGP4(
         settings=dict(
-            in_frame='ITRF',
-            out_frame='ITRF',
-            drag_force=False,
-            radiation_pressure=False,
+            in_frame='ITRS',
+            out_frame='ITRS',
         )
     )
 
@@ -83,7 +94,7 @@ else:
             rx_ecef = rx,
         )
         radar = RadarPair(data, prop)
-        sim_data = radar.evaluate(state0)
+        sim_data = radar.evaluate(state0, **params)
 
         radar_data = np.empty((len(t),), dtype=RadarTracklet.dtype)
         radar_data['date'] = dates
@@ -110,34 +121,40 @@ else:
 
     input_data_state = {
         'sources': sources,
-        'Model': RadarPair,
+        'Models': [RadarPair]*len(sources),
         'date0': mjd2npdt(mjd0),
         'params': params,
     }
 
-    post_init = OptimizeLeastSquares(
-        data = input_data_state,
-        variables = variables,
-        start = state0_named,
-        prior = None,
-        propagator = prop,
-        method = 'Nelder-Mead',
-        options = dict(
-            maxiter = 10000,
-            disp = False,
-            xatol = 1e-3,
-        ),
-    )
+    # post_init = OptimizeLeastSquares(
+    #     data = input_data_state,
+    #     variables = variables,
+    #     state_variables = variables,
+    #     start = state0_named,
+    #     prior = None,
+    #     propagator = prop,
+    #     method = 'Nelder-Mead',
+    #     options = dict(
+    #         maxiter = 10000,
+    #         disp = False,
+    #         xatol = 1e-3,
+    #     ),
+    # )
 
-    post_init.run()
+    # post_init.run()
+    # mcmc_start = post_init.results.MAP
+
+    mcmc_start = true_state
 
     post = MCMCLeastSquares(
         data = input_data_state,
         variables = variables,
-        start = post_init.results.MAP,
+        state_variables = variables,
+        start = mcmc_start,
         prior = None,
         propagator = prop,
         method = 'SCAM',
+        proposal = 'LinSigma',
         method_options = dict(
             accept_max = 0.5,
             accept_min = 0.3,
@@ -174,6 +191,7 @@ for var in variables:
 
 plots.autocorrelation(results, max_k=steps)
 plots.trace(results, reference=true_state)
+plots.trace(results)
 plots.scatter_trace(results, reference=true_state)
 
 plt.show()

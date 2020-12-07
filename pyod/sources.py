@@ -475,6 +475,15 @@ class SourceCollection(list):
         for obj in self[:]:
             if obj.index != object_id:
                 self.remove(obj)
+
+    @classmethod
+    def from_list(cls, lst):
+        slist = cls()
+        for x in lst:
+            slist.paths.append(x.path)
+            slist.append(x)
+        return slist
+
     
     #implement copy and deepcopy instead of this
     def get(self, object_id):

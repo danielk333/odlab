@@ -5,7 +5,7 @@
 '''
 
 #Python standard import
-
+import copy
 
 #Third party import
 import numpy as np
@@ -23,7 +23,6 @@ class ForwardModel(object):
     REQUIRED_DATA = [
         'date',
         'date0',
-        'params',
     ]
 
     def __init__(self, data, propagator, coord='cart', **kwargs):
@@ -39,18 +38,19 @@ class ForwardModel(object):
         t = (self.data['date'] - self.data['date0'])/np.timedelta64(1, 's')
         self.data['t'] = t
 
-    def get_states(self, state):
+
+    def get_states(self, state, **kw):
         states = self.propagator.propagate(
             self.data['t'],
             state,
             self.data['mjd0'],
-            **self.data['params']
+            **kw
         )
 
         return states
 
 
-    def evaluate(self, state):
+    def evaluate(self, state, **kw):
         '''Evaluate forward model
         '''
         raise NotImplementedError()
@@ -104,11 +104,11 @@ class RadarPair(ForwardModel):
         return r_sim, v_sim
 
 
-    def evaluate(self, state):
+    def evaluate(self, state, **kw):
         '''Evaluate forward model
         '''
 
-        states = self.get_states(state)
+        states = self.get_states(state, **kw)
 
         sim_dat = np.empty((len(self.data['t']), ), dtype=RadarPair.dtype)
 
@@ -162,11 +162,11 @@ class CameraStation(ForwardModel):
 
         
 
-    def evaluate(self, state):
+    def evaluate(self, state, **kw):
         '''Evaluate forward model
         '''
 
-        states = self.get_states(state)
+        states = self.get_states(state, **kw)
 
         geo = coordinates.ecef2geodetic(self.data['ecef'][0], self.data['ecef'][1], self.data['ecef'][2])
 
@@ -197,11 +197,11 @@ class EstimatedState(ForwardModel):
         super(EstimatedState, self).__init__(data, propagator, **kwargs)
 
 
-    def evaluate(self, state):
+    def evaluate(self, state, **kw):
         '''Evaluate forward model
         '''
 
-        states = self.get_states(state)
+        states = self.get_states(state, **kw)
 
         sim_dat = np.empty((len(self.data['t']), ), dtype=EstimatedState.dtype)
 
@@ -211,4 +211,5 @@ class EstimatedState(ForwardModel):
                 sim_dat[ind][name] = states[dim,ind]
 
         return sim_dat
+
 

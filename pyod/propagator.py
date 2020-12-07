@@ -13,6 +13,12 @@ except ImportError:
     SGP4 = None
 
 try:
+    from sorts.propagator import Kepler
+    __all__ += ['Kepler']
+except ImportError:
+    Kepler = None
+
+try:
     from sorts.propagator import Orekit
     __all__ += ['Orekit']
 except ImportError:
