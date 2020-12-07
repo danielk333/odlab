@@ -126,25 +126,25 @@ else:
         'params': params,
     }
 
-    # post_init = OptimizeLeastSquares(
-    #     data = input_data_state,
-    #     variables = variables,
-    #     state_variables = variables,
-    #     start = state0_named,
-    #     prior = None,
-    #     propagator = prop,
-    #     method = 'Nelder-Mead',
-    #     options = dict(
-    #         maxiter = 10000,
-    #         disp = False,
-    #         xatol = 1e-3,
-    #     ),
-    # )
+    post_init = OptimizeLeastSquares(
+        data = input_data_state,
+        variables = variables,
+        state_variables = variables,
+        start = state0_named,
+        prior = None,
+        propagator = prop,
+        method = 'Nelder-Mead',
+        options = dict(
+            maxiter = 10000,
+            disp = False,
+            xatol = 1e-3,
+        ),
+    )
 
-    # post_init.run()
-    # mcmc_start = post_init.results.MAP
+    post_init.run()
+    mcmc_start = post_init.results.MAP
 
-    mcmc_start = true_state
+    # mcmc_start = true_state
 
     post = MCMCLeastSquares(
         data = input_data_state,
