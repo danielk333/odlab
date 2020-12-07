@@ -25,7 +25,7 @@ with open('requirements', 'r') as fh:
 
 setuptools.setup(
     name='pyod',
-    version='0.2.0',
+    version='0.3.0',
     long_description=long_description,
     url='https://github.com/danielk333/pyod',
     classifiers=[
