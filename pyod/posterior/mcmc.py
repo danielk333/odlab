@@ -114,10 +114,7 @@ class MCMCLeastSquares(OptimizeLeastSquares):
                 if not isinstance(deltas, np.ndarray):
                     deltas = np.ones((len(self.variables),), dtype=np.float64)*deltas
 
-                data0, J, Sigma_m_diag = self.model_jacobian(start, deltas)
-                Sigma_m_inv = np.diag(1.0/Sigma_m_diag)
-
-                Sigma_orb = np.linalg.inv(np.transpose(J) @ Sigma_m_inv @ J)
+                Sigma_orb = self.linear_MAP_covariance(start, deltas, prior=None)
 
                 proposal_mu = np.zeros((len(self.variables,)), dtype=np.float64)
                 eigs, proposal_axis = np.linalg.eig(Sigma_orb)

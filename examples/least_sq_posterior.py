@@ -136,10 +136,10 @@ post = OptimizeLeastSquares(
 )
 
 deltas = [0.1]*3 + [0.05]*3 + [0.01]
-data0, J, Sigma = post.model_jacobian(state0_named, deltas)
+Sigma_orb = post.linear_MAP_covariance(true_state, deltas)
+print('Linearized MAP covariance:')
+print(Sigma_orb)
 
-print(J)
-print(Sigma)
 
 post.run()
 

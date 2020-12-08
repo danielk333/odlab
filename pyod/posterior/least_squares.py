@@ -168,6 +168,18 @@ class OptimizeLeastSquares(Posterior):
         return data0, J, Sigma
 
 
+    def linear_MAP_covariance(self, MAP, deltas, prior_cov_inv=None):
+        data0, J, Sigma_m_diag = self.model_jacobian(MAP, deltas)
+        Sigma_m_inv = np.diag(1.0/Sigma_m_diag)
+
+        if prior_cov_inv is None:
+            Sigma_orb = np.linalg.inv(np.transpose(J) @ Sigma_m_inv @ J)
+        else:
+            Sigma_orb = np.linalg.inv(np.transpose(J) @ Sigma_m_inv @ J + prior_cov_inv)
+
+        return Sigma_orb
+
+
     def logprior(self, state):
         '''The logprior function
         '''
