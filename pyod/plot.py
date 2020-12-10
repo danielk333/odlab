@@ -14,13 +14,6 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.patches as mpatches
 import matplotlib.path as mpath
 
-try:
-    from pandas.plotting import scatter_matrix
-    import pandas
-except ImportError:
-    scatter_matrix = None
-    pandas = None
-
 #Local import
 from .posterior import _enumerated_to_named
 from .posterior import _named_to_enumerated
@@ -29,34 +22,34 @@ from .posterior import _named_to_enumerated
 
 def autocorrelation(results, **kwargs):
 
+    axes = kwargs.get('axes', None)
+    if axes is None:
+        new_plot = True
+        axes = []
+    else:
+        new_plot = False
+
     min_k = kwargs.get('min_k', 0)
     max_k = kwargs.get('max_k', len(results.trace)//100)
 
     MC_gamma = results.autocovariance(min_k = min_k, max_k = max_k)
     Kv = np.arange(min_k, max_k)
-    
-    fig1, axes1 = plt.subplots(3, 2,figsize=(15,15), sharey=True, sharex=True)
-    fig1.suptitle('Markov Chain autocorrelation functions')
-    ind = 0
-    for xp in range(3):
-        for yp in range(2):
-            var = results.variables[ind]
-            ax = axes1[xp,yp]
-            ax.plot(Kv, MC_gamma[var]/MC_gamma[var][0])
-            ax.set(
-                xlabel='$k$',
-                ylabel='$\hat{\gamma}_k/\hat{\gamma}_0$',
-                title='Autocorrelation for "{}"'.format(var),
-            )
-            ind += 1
 
-    fig2, axes2 = plt.subplots(len(results.variables)-6, 1, figsize=(15,15))
-    fig2.suptitle('Markov Chain autocorrelation functions')
-    for ind, var in enumerate(results.variables[6:]):
-        if len(results.variables)-6 > 1:
-            ax = axes2[ind]
-        else:
-            ax = axes2
+    figs = []
+    fig_plots = 6
+
+    for ind, var in enumerate(results.variables):
+    
+        if ind % fig_plots == 0:
+            if new_plot:
+                fig, ax_mat = plt.subplots(3, 2, figsize=(15,15), sharey=True, sharex=True)
+                fig.suptitle('Markov Chain autocorrelation functions')
+                figs.append(fig)
+                ax = [x for xx in ax_mat for x in xx]
+                axes.append(ax)
+
+        ax = axes[ind//fig_plots][ind % fig_plots]
+
         ax.plot(Kv, MC_gamma[var]/MC_gamma[var][0])
         ax.set(
             xlabel='$k$',
@@ -64,23 +57,11 @@ def autocorrelation(results, **kwargs):
             title='Autocorrelation for "{}"'.format(var),
         )
 
-    plots = []
-    plots.append({
-        'fig': fig1,
-        'axes': [axes1],
-    })
-    plots.append({
-        'fig': fig2,
-        'axes': [axes2],
-    })
+    return figs, axes
 
-    return plots
 
 
 def scatter_trace(results, **kwargs):
-
-    if scatter_matrix is None:
-        raise ImportError('pandas package is required for this plotting function')
 
     thin = kwargs.get('thin', None)
 
@@ -92,8 +73,9 @@ def scatter_trace(results, **kwargs):
             trace2[var] *= 1e-3
     if thin is not None:
         trace2 = trace2[thin]
-    df = pandas.DataFrame.from_records(trace2)
-    colnames = df.columns.copy()
+
+    colnames = trace2.dtype.names
+    cols_ = len(colnames)
 
     cols = kwargs.get('columns', {
         'x':'x [km]',
@@ -104,13 +86,41 @@ def scatter_trace(results, **kwargs):
         'vz':'$v_z$ [km/s]',
         'A':'A [m$^2$]',
     })
-    df = df.rename(columns=cols)
+    for key in colnames:
+        if key not in cols:
+            cols[key] = key
 
-    axes = scatter_matrix(df, alpha=kwargs.get('alpha', 0.01), figsize=(15,15))
+    alpha = kwargs.get('alpha', 0.01)
+    figsize = kwargs.get('figsize',(15,15))
+    axes = kwargs.get('axes', None)
+
+    if axes is None:
+        fig, axes = plt.subplots(cols_, cols_, figsize=figsize)
+    else:
+        fig = None
+
+    for colx in range(cols_):
+        for coly in range(cols_):
+            if colx==coly:
+                axes[colx][coly].hist(trace2[colnames[colx]])
+            else:
+                axes[colx][coly].scatter(trace2[colnames[coly]], trace2[colnames[colx]], 1.0, alpha=alpha, linewidths=0)
+
+            if coly > 0 and colx + 1 < cols_:
+                axes[colx][coly].xaxis.set_visible(False)
+                axes[colx][coly].yaxis.set_visible(False)
+            elif coly == 0 and colx + 1 < cols_:
+                axes[colx][coly].xaxis.set_visible(False)
+                axes[colx][coly].set_ylabel(cols[colnames[colx]])
+            elif colx + 1 == cols_ and coly > 0:
+                axes[colx][coly].yaxis.set_visible(False)
+                axes[colx][coly].set_xlabel(cols[colnames[coly]])
+            else:
+                 axes[colx][coly].set_xlabel(cols[colnames[coly]])
+                 axes[colx][coly].set_ylabel(cols[colnames[colx]])
+
 
     reference = kwargs.get('reference', None)
-
-    cols_ = len(colnames)
 
     if reference is not None:
         reference = reference.copy()
@@ -123,11 +133,39 @@ def scatter_trace(results, **kwargs):
                     axes[colx][coly].axvline(x=reference[colnames[colx]][0], ymin=0, ymax=1, color='r')
                 else:
                     axes[colx][coly].plot(reference[colnames[colx]][0], reference[colnames[coly]][0], 'or')
-    return axes
+    
+    if cols_ > 1:
+        #scruffed from pandas scatter_matrix
+        lim1 = axes[0][1].get_ylim()
+        locs = axes[0][1].yaxis.get_majorticklocs()
+        locs = locs[(lim1[0] <= locs) & (locs <= lim1[1])]
+        adj = (locs - lim1[0]) / (lim1[1] - lim1[0])
+
+        lim0 = axes[0][0].get_ylim()
+        adj = adj * (lim0[1] - lim0[0]) + lim0[0]
+        axes[0][0].yaxis.set_ticks(adj)
+
+        if np.all(locs == locs.astype(int)):
+            # if all ticks are int
+            locs = locs.astype(int)
+        axes[0][0].yaxis.set_ticklabels(locs)
+
+    if fig is not None:
+        fig.tight_layout()
+        fig.subplots_adjust(hspace=0, wspace=0)
+
+    return fig, axes
 
 
 
 def trace(results, **kwargs):
+
+    axes = kwargs.get('axes', None)
+    if axes is None:
+        new_plot = True
+        axes = []
+    else:
+        new_plot = False
 
     axis_var = kwargs.get('labels', None)
     if axis_var is None:
@@ -140,26 +178,26 @@ def trace(results, **kwargs):
 
     reference = kwargs.get('reference', None)
 
-    plots = []
+    figs = []
+    fig_plots = 6
+
     for ind, var in enumerate(results.variables):
         if var in ['x', 'y', 'z', 'vx', 'vy', 'vz']:
             coef = 1e-3
         else:
             coef = 1.0
     
-        if ind == 0 or ind == 6:
-            fig = plt.figure(figsize=(15,15))
-            fig.suptitle(kwargs.get('title','MCMC trace plot'))
-            plots.append({
-                'fig': fig,
-                'axes': [],
-            })
+        if ind % fig_plots == 0:
+            if new_plot:
+                fig = plt.figure(figsize=(15,15))
+                fig.suptitle(kwargs.get('title','MCMC trace plot'))
+                figs.append(fig)
             
-        if ind <= 5:
-            ax = fig.add_subplot(231+ind)
-        if ind > 5:
-            ax = fig.add_subplot(100*(len(results.variables) - 6) + ind - 5 + 10)
-        plots[-1]['axes'].append(ax)
+        if new_plot:
+            ax = fig.add_subplot(231+(ind % fig_plots))
+        else:
+            ax = axes[ind//fig_plots][ind % fig_plots]
+
         ax.plot(results.trace[var]*coef)
 
         if reference is not None:
@@ -170,7 +208,7 @@ def trace(results, **kwargs):
             ylabel='{}'.format(axis_var[ind]),
         )
 
-    return plots
+    return figs, axes
 
 
 
@@ -277,6 +315,14 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
 
     ylabels = kwargs.get('ylabels', None)
 
+    axes = kwargs.get('axes', None)
+    if axes is None:
+        new_plot = True
+        axes = []
+    else:
+        new_plot = False
+    figs = []
+
     residual_data = []
     for state in states:
         residual_data.append(
@@ -292,24 +338,24 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
     else:
         _pltn = plot_n
 
-    plots = []
-
     _ind = 0
     for ind in range(plot_n):
         variables = [x[0] for x in posterior._models[ind].dtype]
 
         if _ind == _pltn or _ind == 0:
             _ind = 0
-            fig = plt.figure(figsize=(15,15))
-            fig.suptitle(kwargs.get('title', 'Orbit determination residuals'))
-            plots.append({
-                'fig': fig,
-                'axes': [],
-            })
+            if new_plot:
+                axes.append([])
+                fig = plt.figure(figsize=(15,15))
+                fig.suptitle(kwargs.get('title', 'Orbit determination residuals'))
+                figs.append(fig)
 
         for vari, var in enumerate(variables):
-            ax = fig.add_subplot(100*_pltn + len(variables)*10 + 1 + vari + _ind*len(variables))
-            plots[-1]['axes'].append(ax)
+            if new_plot:
+                ax = fig.add_subplot(100*_pltn + len(variables)*10 + 1 + vari + _ind*len(variables))
+                axes[-1].append(ax)
+            else:
+                ax = axes[ind][_ind]
 
             for sti in range(num):
                 if absolute:
@@ -333,4 +379,4 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
 
         _ind += 1
 
-    return plots
+    return figs, axes
