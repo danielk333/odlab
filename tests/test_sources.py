@@ -26,7 +26,7 @@ class TestSources(unittest.TestCase):
             obj = src.ObservationSource(path = None)
 
         with self.assertRaises(NotImplementedError):
-            obj = src.TrackletSource(path = None)
+            obj = src.RadarTracklet(path = None)
 
         with self.assertRaises(NotImplementedError):
             obj = src.StateSource(path = None)
@@ -109,23 +109,23 @@ class TestOrbitEphemerisMessageSource(unittest.TestCase):
 
 
 
-class TestTrackingDataMessageSource(unittest.TestCase):
+class TestRadarTrackingDataMessageSource(unittest.TestCase):
 
     def setUp(self):
         self.path = src.SourcePath(data = data_dir + '/tracklet.tdm', ptype='file')
 
     def test_init(self):
-        obj = src.TrackingDataMessageSource(path = self.path)
+        obj = src.RadarTrackingDataMessage(path = self.path)
 
     def test_accept(self):
-        assert src.TrackingDataMessageSource.accept(self.path)
+        assert src.RadarTrackingDataMessage.accept(self.path)
         with self.assertRaises(TypeError):
-            src.TrackingDataMessageSource.accept(None)
-        assert not src.TrackingDataMessageSource.accept(src.SourcePath(data = data_dir + '/state.oem', ptype='file'))
-        assert not src.TrackingDataMessageSource.accept(src.SourcePath(data = {'data': None}, ptype='ram'))
+            src.RadarTrackingDataMessage.accept(None)
+        assert not src.RadarTrackingDataMessage.accept(src.SourcePath(data = data_dir + '/state.oem', ptype='file'))
+        assert not src.RadarTrackingDataMessage.accept(src.SourcePath(data = {'data': None}, ptype='ram'))
 
     def test_load(self):
-        obj = src.TrackingDataMessageSource(path = self.path)
+        obj = src.RadarTrackingDataMessage(path = self.path)
 
         assert obj.index == 1001120300074
 
@@ -133,12 +133,13 @@ class TestTrackingDataMessageSource(unittest.TestCase):
 
         assert 'PATH' in obj.meta
 
-        for met_ in src.TrackingDataMessageSource.REQUIRED_META:
+        for met_ in src.RadarTrackingDataMessage.REQUIRED_META:
             assert met_ in obj.meta
 
         assert len(obj.data) == 38
 
-        for dt in src.TrackingDataMessageSource.dtype:
+        for dt in src.RadarTrackingDataMessage.dtype:
             assert dt[0] in obj.data.dtype.names
     
         nt.assert_almost_equal(obj.data[0]['r'], 10539.162206964465e3, decimal=5)
+
