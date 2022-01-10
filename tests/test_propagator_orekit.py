@@ -13,7 +13,7 @@ import unittest
 import numpy as np
 import numpy.testing as nt
 
-from pyod.propagator import PropagatorOrekit
+from pyod.propagator import Orekit as PropagatorOrekit
 
 @pytest.mark.usefixtures("orekit_data")
 class TestPropagatorOrekit(unittest.TestCase):
