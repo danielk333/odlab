@@ -1,6 +1,10 @@
 # Compiled source #
 ###################
 
+#Vi/vim
+*~
+.*.sw?
+
 #Sublime
 *.sublime*
 
