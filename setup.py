@@ -16,7 +16,7 @@ class PostInstallCommand(install):
     def run(self):
         install.run(self)
 
-with open('README', 'r') as fh:
+with open('README.rst', 'r') as fh:
     long_description = fh.read()
 
 with open('requirements', 'r') as fh:
