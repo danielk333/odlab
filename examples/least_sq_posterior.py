@@ -14,6 +14,8 @@ from pyod.datetime import mjd2npdt
 from pyod.coordinates import geodetic2ecef
 from pyod.sources import RadarTracklet
 
+import pyorb
+
 import pathlib
 import numpy as np
 import matplotlib.pyplot as plt
@@ -56,7 +58,7 @@ state0 = np.array([-7100297.113,-3897715.442,18568433.707,86.771,-3407.231,2961.
 t = np.linspace(0,1800/(3600*24),num=10)
 mjd0 = 54952.08
 dates = mjd2npdt(mjd0 + t)
-params = dict(C_D=2.3)
+params = dict(C_D=2.3, M0=pyorb.M_earth)
 
 r_err = 1e3
 v_err = 1e2
@@ -76,7 +78,7 @@ for rx in rx_list:
         tx_ecef = ski_ecef,
         rx_ecef = rx,
     )
-    radar = RadarPair(data, prop)
+    radar = pyod.RadarPair(data, prop)
     sim_data = radar.evaluate(state0[:6], log10A_div_m=state0[6], **params)
 
     radar_data = np.empty((len(t),), dtype=RadarTracklet.dtype)
