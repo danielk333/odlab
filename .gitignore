@@ -1,6 +1,9 @@
 # Compiled source #
 ###################
 
+# Temp data from examples
+examples/tmp
+
 #Vi/vim
 *~
 .*.sw?
