@@ -20,16 +20,26 @@ from pyod.sources import RadarTracklet
 
 import numpy as np
 import matplotlib.pyplot as plt
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
+
+try:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+except ImportError:
+    class COMM_WORLD:
+        size = 1
+        rank = 0
+    comm = COMM_WORLD()
 
 
+results_data = pathlib.Path(__file__).parent / 'tmp' / 'mcmc_results.h5'
+if not results_data.parent.is_dir():
+    results_data.parent.mkdir()
 
-orekit_data = '/home/danielk/IRF/IRF_GITLAB/orekit_build/orekit-data-master.zip'
-results_data = str('.' / pathlib.Path(__file__).parents[0] / 'tmp_data' / 'mcmc_example_results.h5')
-
-state0 = np.array([-7100297.113,-3897715.442,18568433.707,86.771,-3407.231,2961.571])
-t = np.linspace(0,1800/(3600*24),num=20)
+state0 = np.array([
+    -7100297.113, -3897715.442, 18568433.707,
+    86.771, -3407.231, 2961.571,
+])
+t = np.linspace(0, 1800/(3600*24), num=20)
 mjd0 = 54952.08
 dates = mjd2npdt(mjd0 + t)
 params = dict(A= 0.1, m = 1.0)
@@ -53,7 +63,7 @@ state0_named = np.empty((1,), dtype=dtype)
 true_state = np.empty((1,), dtype=dtype)
 
 start_err = [5e3]*3 + [1e2]*3
-#start_err = [0.0]*3 + [0.0]*3
+# start_err = [0.0]*3 + [0.0]*3
 
 # step_arr = np.array([1e3,1e3,1e3,1e1,1e1,1e1], dtype=np.float64)
 step_arr = np.ones((6,), dtype=np.float64)*0.1
@@ -67,16 +77,7 @@ for ind, name in enumerate(variables):
 if os.path.isfile(results_data):
     results = PosteriorParameters.load_h5(results_data)
 else:
-    # prop = pyod.propagator.Orekit(
-    #     orekit_data = orekit_data, 
-    #     settings=dict(
-    #         in_frame='ITRS',
-    #         out_frame='ITRS',
-    #         drag_force=False,
-    #         radiation_pressure=False,
-    #     )
-    # )
-    prop = pyod.propagator.SGP4(
+    prop = pyod.propagator.Kepler(
         settings=dict(
             in_frame='ITRS',
             out_frame='ITRS',
@@ -103,7 +104,8 @@ else:
         radar_data['r_sd'] = np.full((len(t),), r_err, dtype=np.float64)
         radar_data['v_sd'] = np.full((len(t),), v_err, dtype=np.float64)
 
-        source_data.append({
+        source_data.append(
+            {
                 'data': radar_data,
                 'meta': dict(
                     tx_ecef = ski_ecef,
@@ -175,8 +177,20 @@ else:
 
     plots.orbits(post, true=true_state)
 
-    plots.residuals(post, [state0_named, true_state,results.MAP], ['Start', 'True', 'MAP'], ['-b', '-r', '-g'], absolute=False)
-    plots.residuals(post, [state0_named, true_state,results.MAP], ['Start', 'True', 'MAP'], ['-b', '-r', '-g'], absolute=True)
+    plots.residuals(
+        post, 
+        [state0_named, true_state, results.MAP], 
+        ['Start', 'True', 'MAP'], 
+        ['-b', '-r', '-g'], 
+        absolute=False,
+    )
+    plots.residuals(
+        post, 
+        [state0_named, true_state, results.MAP], 
+        ['Start', 'True', 'MAP'], 
+        ['-b', '-r', '-g'], 
+        absolute=True,
+    )
 
     plt.show()
 
@@ -187,7 +201,7 @@ print(results)
 
 print('True error:')
 for var in variables:
-    print('{:<3}: {:.3f}'.format(var, (results.MAP[var][0] - true_state[var][0])*1e-3))
+    print(f'{var:<3}: {(results.MAP[var][0] - true_state[var][0])*1e-3:.3f}')
 
 plots.autocorrelation(results, max_k=steps)
 plots.trace(results, reference=true_state)
