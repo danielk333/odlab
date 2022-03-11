@@ -12,7 +12,7 @@ from .posterior import MCMCLeastSquares
 
 from .misc import propagate_results
 
-__version__ = '0.3.0'
+from .version import __version__
 
 __all__ = [
     'SourceCollection',
@@ -27,6 +27,7 @@ __all__ = [
     'MCMCLeastSquares',
     'register_source',
     'propagate_results',
+    '__version__',
 ]
 
 from .propagator import *
