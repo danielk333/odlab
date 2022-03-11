@@ -1,47 +1,20 @@
-import os
 import setuptools
-from setuptools.command.develop import develop
-from setuptools.command.install import install
-import subprocess
+import pathlib
+import codecs
 
-class PostDevelopCommand(develop):
-    """Post-installation for development mode."""
+HERE = pathlib.Path(__file__).resolve().parents[0]
 
-    def run(self):
-        develop.run(self)
 
-class PostInstallCommand(install):
-    """Post-installation for installation mode."""
+def get_version(path):
+    with codecs.open(path, 'r') as fp:
+        for line in fp.read().splitlines():
+            if line.startswith('__version__'):
+                delim = '"' if '"' in line else "'"
+                return line.split(delim)[1]
+        else:
+            raise RuntimeError("Unable to find version string.")
 
-    def run(self):
-        install.run(self)
-
-with open('README.rst', 'r') as fh:
-    long_description = fh.read()
-
-with open('requirements', 'r') as fh:
-    pip_req = fh.read().split('\n')
-    pip_req = [x.strip() for x in pip_req if len(x.strip()) > 0]
 
 setuptools.setup(
-    name='pyod',
-    version='0.3.0',
-    long_description=long_description,
-    url='https://github.com/danielk333/pyod',
-    classifiers=[
-        'Programming Language :: Python :: 3',
-        'Operating System :: OS Independent',
-    ],
-    install_requires=pip_req,
-    packages=setuptools.find_packages(),
-    package_data={},
-    # metadata to display on PyPI
-    author='Daniel Kastinen',
-    author_email='daniel.kastinen@irf.se',
-    description='Python Orbit Determination',
-    license='Mozilla Public License Version 2.0',
-    cmdclass={
-        'develop': PostDevelopCommand,
-        'install': PostInstallCommand,
-    },
+    version=get_version(HERE / 'odlab' / 'version.py'),
 )

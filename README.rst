@@ -1,16 +1,11 @@
+Orbit Determination Laboratory, for exploring and developing novel orbit determination and wrapping existing orbit determination packages for comparisons
+
 Feature list
 -------------
 
-* stuff
-
-
-Simple example
----------------
-
-
-.. code-block:: python
-
-   import pyod
+* Monte-Carlo Markov-Chain evaluation of posterior distribution
+* Experimental sensor-fusion methods
+* Wrapps other orbit-determination software in a conventient manner
 
 
 Install
@@ -18,7 +13,9 @@ Install
 
 .. code-block:: bash
 
-   pip install pyod
+   git clone https://github.com/danielk333/odlab.git
+   cd odlab
+   pip install .
 
 
 Testing
@@ -36,7 +33,7 @@ If you want to test orekit propagator, that requires data to function, call pyte
 
 .. code-block:: bash
 
-   pytest --orekit_data='/orekit-data-master.zip'
+   pytest --orekit_data='path/to/orekit-data-master.zip'
 
 
 Build documentation
@@ -48,16 +45,10 @@ You need
 
 .. code-block:: bash
 
-   cd doc; make html
+   cd docs; make html
 
 
 To reference
 --------------
 
-.. code-block:: 
-
-    @article{
-        autor="Daniel Kastinen",
-        title=""
-    }
-
+Please contact us (daniel.kastinen@irf.se) before using for publication or projects, this is an experimental repository and may need information from the code-authors about stability and other concerns.
