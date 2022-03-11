@@ -10,6 +10,11 @@ from .posterior import Posterior, PosteriorParameters
 from .posterior import OptimizeLeastSquares
 from .posterior import MCMCLeastSquares
 
+from . import sources
+from . import plot
+
+from .profiling import PROFILER as profiler
+
 from .misc import propagate_results
 
 from .version import __version__
@@ -29,9 +34,3 @@ __all__ = [
     'propagate_results',
     '__version__',
 ]
-
-from .propagator import *
-from .propagator import __all__ as propagators
-
-__all__ += propagators
-

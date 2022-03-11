@@ -13,7 +13,7 @@ from numpy.lib.recfunctions import unstructured_to_structured
 from tqdm import tqdm
 
 # Local import
-from . import datetime as datetime_local
+from . import times
 
 
 def propagate_results(t, date0, results, propagator, num=None, params=None):
@@ -36,7 +36,7 @@ def propagate_results(t, date0, results, propagator, num=None, params=None):
         prop_state = propagator.propagate(
             np.array([t]),
             state,
-            datetime_local.npdt2mjd(date0),
+            times.npdt2mjd(date0),
             **params
         )
         states[it] = unstructured_to_structured(

@@ -9,7 +9,8 @@ import numpy as np
 import sorts
 
 # Local import
-from . import datetime as datetime_local
+from . import times
+from . import profiling
 
 
 class ForwardModel(object):
@@ -21,6 +22,7 @@ class ForwardModel(object):
         'date0',
     ]
 
+    @profiling.timeing(f'{__name__}.ForwardModel')
     def __init__(self, data, propagator, coord='cart', **kwargs):
         for key in self.REQUIRED_DATA:
             if key not in data:
@@ -31,10 +33,11 @@ class ForwardModel(object):
         self.propagator = propagator
         self.coord = coord
 
-        self.data['mjd0'] = datetime_local.npdt2mjd(self.data['date0'])
+        self.data['mjd0'] = times.npdt2mjd(self.data['date0'])
         t = (self.data['date'] - self.data['date0'])/np.timedelta64(1, 's')
         self.data['t'] = t
 
+    @profiling.timeing(f'{__name__}.ForwardModel')
     def get_states(self, state, **kw):
         states = self.propagator.propagate(
             self.data['t'],
@@ -50,6 +53,7 @@ class ForwardModel(object):
         '''
         raise NotImplementedError()
 
+    @profiling.timeing(f'{__name__}.ForwardModel')
     def distance(self, sim, obs):
         '''Calculates the distance between variable points
 
@@ -77,6 +81,7 @@ class RadarPair(ForwardModel):
     def __init__(self, data, propagator, **kwargs):
         super(RadarPair, self).__init__(data, propagator, **kwargs)
 
+    @profiling.timeing(f'{__name__}.RadarPair')
     @staticmethod
     def generate_measurements(state_ecef, rx_ecef, tx_ecef):
 
@@ -95,6 +100,7 @@ class RadarPair(ForwardModel):
 
         return r_sim, v_sim
 
+    @profiling.timeing(f'{__name__}.RadarPair')
     def evaluate(self, state, **kw):
         '''Evaluate forward model
         '''

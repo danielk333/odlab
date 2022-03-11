@@ -26,6 +26,7 @@ except ImportError:
 from .. import sources
 from .posterior import Posterior
 from .posterior import _named_to_enumerated, _enumerated_to_named
+from .. import profiling
 
 
 class OptimizeLeastSquares(Posterior):
@@ -49,6 +50,7 @@ class OptimizeLeastSquares(Posterior):
         'options': {},
     }
 
+    @profiling.timeing(f'{__name__}.OptimizeLeastSquares')
     def __init__(self, data, variables, **kwargs):
         for key in self.REQUIRED:
             if key not in kwargs:
@@ -112,6 +114,7 @@ class OptimizeLeastSquares(Posterior):
                 )
             )
 
+    @profiling.timeing(f'{__name__}.OptimizeLeastSquares')
     def model_jacobian(self, state0, deltas):
         '''Calculate the observation and its numerical Jacobean 
         of a state given the current models. 
@@ -175,9 +178,12 @@ class OptimizeLeastSquares(Posterior):
 
         return data0, J, Sigma
 
+    @profiling.timeing(f'{__name__}.OptimizeLeastSquares')
     def linear_MAP_covariance(self, MAP, deltas, prior_cov_inv=None):
         data0, J, Sigma_m_diag = self.model_jacobian(MAP, deltas)
         Sigma_m_inv = np.diag(1.0/Sigma_m_diag)
+
+        print(np.transpose(J) @ Sigma_m_inv @ J)
 
         if prior_cov_inv is None:
             Sigma_orb = np.linalg.inv(
@@ -188,6 +194,7 @@ class OptimizeLeastSquares(Posterior):
 
         return Sigma_orb
 
+    @profiling.timeing(f'{__name__}.OptimizeLeastSquares')
     def logprior(self, state):
         '''The logprior function
         '''
@@ -207,6 +214,7 @@ class OptimizeLeastSquares(Posterior):
 
         return logprob
 
+    @profiling.timeing(f'{__name__}.OptimizeLeastSquares')
     def _get_state_param(self, state):
         state_all = _named_to_enumerated(state, self.variables)
 
@@ -226,6 +234,7 @@ class OptimizeLeastSquares(Posterior):
 
         return state_, params
 
+    @profiling.timeing(f'{__name__}.OptimizeLeastSquares')
     def loglikelihood(self, state):
         '''The loglikelihood function
         '''
@@ -263,6 +272,7 @@ class OptimizeLeastSquares(Posterior):
 
         return 0.5*logsum
 
+    @profiling.timeing(f'{__name__}.OptimizeLeastSquares')
     def run(self):
         if self.kwargs['start'] is None and self.kwargs['prior'] is None:
             raise ValueError('No start value or prior given.')
@@ -312,6 +322,7 @@ class OptimizeLeastSquares(Posterior):
 
         return self.results
 
+    @profiling.timeing(f'{__name__}.OptimizeLeastSquares')
     def residuals(self, state):
 
         self.loglikelihood(state)
