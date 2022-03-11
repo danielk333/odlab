@@ -7,11 +7,11 @@
 import numpy as np
 import pathlib
 
-from pyod import SourceCollection, SourcePath
-import pyod.sources as src
+from odlab import SourceCollection, SourcePath
+import odlab.sources as src
 
 
-data_dir = '.' / pathlib.Path(__file__).parents[0] / 'example_data'
+data_dir = (pathlib.Path(__file__).parent / 'example_data').resolve()
 
 
 def example_wrapper(text):
@@ -30,9 +30,11 @@ def example_wrapper(text):
         return display_example
     return genereated_wrapper
 
+
 @example_wrapper('Loading sources from RAM')
 def example_ram_data():
-    data = [{
+    data = [
+        {
             'data': np.array([], dtype=src.SimulatedStateSource.dtype),
             'meta': {'frame': None},
             'index': 42,
@@ -51,7 +53,6 @@ def example_ram_data():
 
     sources = SourceCollection(paths = paths)
     sources.details()
-
 
 
 @example_wrapper('Parsing folders recursively for data files')
