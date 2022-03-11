@@ -6,11 +6,10 @@
 
 # Third party import
 import numpy as np
-
+import sorts
 
 # Local import
 from . import datetime as datetime_local
-from . import coordinates
 
 
 class ForwardModel(object):
@@ -131,8 +130,8 @@ class CameraStation(ForwardModel):
     def generate_measurements(state_ecef, ecef, lat, lon):
 
         x = state_ecef[:3] - ecef
-        r = coordinates.ecef2local(lat, lon, 0.0, x[0], x[1], x[2])
-        azel = coordinates.cart2azel(r)
+        r = sorts.frames.ecef_to_enu(lat, lon, 0.0, x[0], x[1], x[2])
+        azel = sorts.frames.cart_to_sph(r)
 
         return azel[0], azel[1]
 
@@ -157,7 +156,7 @@ class CameraStation(ForwardModel):
 
         states = self.get_states(state, **kw)
 
-        geo = coordinates.ecef2geodetic(
+        geo = sorts.frames.ITRS_to_geodetic(
             self.data['ecef'][0], self.data['ecef'][1], self.data['ecef'][2])
 
         sim_dat = np.empty((len(self.data['t']), ), dtype=CameraStation.dtype)

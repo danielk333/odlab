@@ -12,6 +12,7 @@ import pathlib
 # Third party import
 import numpy as np
 import h5py
+import sorts
 
 # Local import
 from . import times
@@ -251,7 +252,7 @@ class RadarTrackingDataMessage(RadarTracklet):
     def load(self):
         path = self.path.data
 
-        odata, ometa = ccsds.read_ccsds(path)
+        odata, ometa = sorts.io.read_txt_tdm(path)
         sort_obs = np.argsort(odata['date'])
         odata = odata[sort_obs]
 
@@ -379,7 +380,7 @@ class OrbitEphemerisMessageSource(StateSource):
     def load(self):
         path = self.path.data
 
-        odata, ometa = ccsds.read_oem(path)
+        odata, ometa = sorts.io.read_txt_oem(path)
         sort_obs = np.argsort(odata['date'])
         odata = odata[sort_obs]
 
