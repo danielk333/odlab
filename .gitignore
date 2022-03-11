@@ -68,7 +68,7 @@ coverage.xml
 *.pot
 
 # Sphinx documentation
-docs/_build/
+docs/build/
 
 # PyBuilder
 target/
@@ -96,8 +96,6 @@ venv.bak/
 .spyderproject
 .spyproject
 
-# mkdocs documentation
-/site
 
 # mypy
 .mypy_cache/
