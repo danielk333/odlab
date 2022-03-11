@@ -4,19 +4,17 @@
 
 '''
 
-#Python standard import
+# Python standard import
 import time
-import os
 
-#Third party import
+# Third party import
 import numpy as np
-
-#Local import
 
 
 sec = np.timedelta64(1000000000, 'ns')
 '''numpy.datetime64: Interval of 1 second
 '''
+
 
 def npdt2date(dt):
     '''Converts a numpy datetime64 value to a date tuple
@@ -33,8 +31,8 @@ def npdt2date(dt):
     it = int(np.floor(ts))
     usec = 1e6 * (dt - (t0 + it*sec))/sec
 
-    tm = time.localtime(it)
-    return tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, usec
+    t = time.localtime(it)
+    return t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, usec
 
 
 def npdt2mjd(dt):
@@ -53,11 +51,10 @@ def mjd2npdt(mjd):
 def unix2npdt(unix):
     '''Converts unix seconds to a numpy datetime64 value (UTC)
     '''
-    return np.datetime64('1970-01-01') + np.timedelta64(1000*1000,'us')*unix
+    return np.datetime64('1970-01-01') + np.timedelta64(1000*1000, 'us')*unix
 
 
 def npdt2unix(dt):
     '''Converts a numpy datetime64 value (UTC) to unix seconds
     '''
-    return (dt - np.datetime64('1970-01-01'))/np.timedelta64(1,'s')
-
+    return (dt - np.datetime64('1970-01-01'))/np.timedelta64(1, 's')
