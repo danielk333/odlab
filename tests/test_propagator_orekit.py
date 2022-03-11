@@ -4,45 +4,42 @@
 
 '''
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath('.'))
-
 import pytest
 import unittest
 import numpy as np
 import numpy.testing as nt
 
-from pyod.propagator import Orekit as PropagatorOrekit
+from odlab.propagator import Orekit
+
 
 @pytest.mark.usefixtures("orekit_data")
-class TestPropagatorOrekit(unittest.TestCase):
+class TestOrekit(unittest.TestCase):
 
     def setUp(self):
         if self.orekit_data is None:
-            self.skipTest('No path to orekit-data given: skipping orekit unit tests.')
+            self.skipTest(
+                'No path to orekit-data given: skipping orekit unit tests.')
 
         self.init_data = dict(
-            state0 = np.array([-7100297.113,-3897715.442,18568433.707,86.771,-3407.231,2961.571]),
+            state0 = np.array([-7100297.113, -3897715.442,
+                               18568433.707, 86.771, -3407.231, 2961.571]),
             mjd0 = 57125.7729,
             C_D = 2.3,
             C_R = 1.0,
             m = 8000,
             A = 1.0,
         )
-        self.t = np.linspace(0,2*3600.0, num=1000, dtype=np.float)
+        self.t = np.linspace(0, 2*3600.0, num=1000, dtype=np.float)
         self.t0 = np.array([0.0], dtype=np.float)
 
-
     def test_get_orbit_kep(self):
-        p = PropagatorOrekit(orekit_data = self.orekit_data)
+        p = Orekit(orekit_data = self.orekit_data)
 
         ecefs = p.propagate(self.t, **self.init_data)
-        self.assertEqual(ecefs.shape, (6,len(self.t)))
-
+        self.assertEqual(ecefs.shape, (6, len(self.t)))
 
     def test_circ_orbit(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 solarsystem_perturbers=[], 
@@ -52,13 +49,13 @@ class TestPropagatorOrekit(unittest.TestCase):
         )
 
         ecefs = p.propagate(self.t, **self.init_data_circ)
-        rn = np.sum(ecefs[:3,:]**2, axis=0)/36000.0e3**2
+        rn = np.sum(ecefs[:3, :]**2, axis=0)/36000.0e3**2
 
-        nt.assert_array_almost_equal(rn, np.ones(rn.shape, dtype=ecefs.dtype), decimal=4)
-
+        nt.assert_array_almost_equal(rn, np.ones(
+            rn.shape, dtype=ecefs.dtype), decimal=4)
 
     def test_options_tidal(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 frame_tidal_effects=True,
@@ -66,9 +63,8 @@ class TestPropagatorOrekit(unittest.TestCase):
         )
         ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_options_frames(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 in_frame='ITRF',
@@ -77,9 +73,8 @@ class TestPropagatorOrekit(unittest.TestCase):
         )
         ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_options_integrator(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 integrator='GraggBulirschStoer',
@@ -87,16 +82,15 @@ class TestPropagatorOrekit(unittest.TestCase):
         )
         ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_options_tolerance(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 position_tolerance=1.0,
             ),
         )
         ecefs1 = p.propagate(self.t0, **self.init_data)
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 position_tolerance=100.0,
@@ -105,20 +99,18 @@ class TestPropagatorOrekit(unittest.TestCase):
         ecefs2 = p.propagate(self.t0, **self.init_data)
         nt.assert_array_almost_equal(ecefs2, ecefs1, decimal=1)
 
-
     def test_options_gravity_order(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 earth_gravity='HolmesFeatherstone',
-                gravity_order=(3,3),
+                gravity_order=(3, 3),
             ),
         )
         ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_options_gravity_kep(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 earth_gravity='Newtonian',
@@ -126,9 +118,8 @@ class TestPropagatorOrekit(unittest.TestCase):
         )
         ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_options_more_solarsystem(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 solarsystem_perturbers=['Moon', 'Sun', 'Jupiter', 'Saturn'],
@@ -136,9 +127,8 @@ class TestPropagatorOrekit(unittest.TestCase):
         )
         ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_options_drag_off(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 drag_force=False,
@@ -146,9 +136,8 @@ class TestPropagatorOrekit(unittest.TestCase):
         )
         ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_options_rad_off(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 radiation_pressure=False,
@@ -156,20 +145,18 @@ class TestPropagatorOrekit(unittest.TestCase):
         )
         ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_options_jpliau(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 constants_source='JPL-IAU',
             ),
         )
         ecefs = p.propagate(self.t0, **self.init_data)
-        
 
     def test_raise_frame(self):
         with self.assertRaises(Exception):
-            p = PropagatorOrekit(
+            p = Orekit(
                 orekit_data = self.orekit_data,
                 settings=dict(
                     in_frame='THIS DOES NOT EXIST',
@@ -177,7 +164,7 @@ class TestPropagatorOrekit(unittest.TestCase):
             )
             ecefs = p.propagate(self.t0, **self.init_data)
         with self.assertRaises(Exception):
-            p = PropagatorOrekit(
+            p = Orekit(
                 orekit_data = self.orekit_data,
                 settings=dict(
                     out_frame='THIS DOES NOT EXIST',
@@ -185,10 +172,9 @@ class TestPropagatorOrekit(unittest.TestCase):
             )
             ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_raise_models(self):
         with self.assertRaises(Exception):
-            p = PropagatorOrekit(
+            p = Orekit(
                 orekit_data = self.orekit_data,
                 settings=dict(
                     earth_gravity='THIS DOES NOT EXIST',
@@ -196,7 +182,7 @@ class TestPropagatorOrekit(unittest.TestCase):
             )
             ecefs = p.propagate(self.t0, **self.init_data)
         with self.assertRaises(Exception):
-            p = PropagatorOrekit(
+            p = Orekit(
                 orekit_data = self.orekit_data,
                 settings=dict(
                     atmosphere='THIS DOES NOT EXIST',
@@ -204,7 +190,7 @@ class TestPropagatorOrekit(unittest.TestCase):
             )
             ecefs = p.propagate(self.t0, **self.init_data)
         with self.assertRaises(Exception):
-            p = PropagatorOrekit(
+            p = Orekit(
                 orekit_data = self.orekit_data,
                 settings=dict(
                     solar_activity='THIS DOES NOT EXIST',
@@ -212,10 +198,9 @@ class TestPropagatorOrekit(unittest.TestCase):
             )
             ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_raise_bodies(self):
         with self.assertRaises(Exception):
-            p = PropagatorOrekit(
+            p = Orekit(
                 orekit_data = self.orekit_data,
                 settings=dict(
                     solarsystem_perturbers=['THIS DOES NOT EXIST'],
@@ -223,9 +208,8 @@ class TestPropagatorOrekit(unittest.TestCase):
             )
             ecefs = p.propagate(self.t0, **self.init_data)
 
-
     def test_raise_sc_params_missing(self):
-        p = PropagatorOrekit(
+        p = Orekit(
             orekit_data = self.orekit_data,
             settings=dict(
                 radiation_pressure=True,

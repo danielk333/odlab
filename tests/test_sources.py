@@ -4,23 +4,19 @@
 
 '''
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath('.'))
 import pathlib
 
 import unittest
-import numpy as np
 import numpy.testing as nt
 
 import pyod.sources as src
 
 
-data_dir = str('.' / pathlib.Path(__file__).parents[0] / 'data')
+data_dir = str(pathlib.Path(__file__).parent / 'data')
 
 
 class TestSources(unittest.TestCase):
-    
+
     def test_ABC_exception(self):
         with self.assertRaises(NotImplementedError):
             obj = src.ObservationSource(path = None)
@@ -31,8 +27,9 @@ class TestSources(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             obj = src.StateSource(path = None)
 
+
 class TestSourcePath(unittest.TestCase):
-    
+
     def test_init(self):
         for ptype in src._ptypes:
             obj = src.SourcePath(data = None, ptype=ptype)
@@ -48,9 +45,9 @@ class TestSourcePath(unittest.TestCase):
                 obj = src.SourcePath(data = None, ptype=ptype)
             str_ = str(obj)
 
-
     def test_recursive_folder(self):
-        paths = src.SourcePath.recursive_folder(data_dir + '/', exts=['oem', 'tdm'])
+        paths = src.SourcePath.recursive_folder(
+            data_dir + '/', exts=['oem', 'tdm'])
         assert len(paths) == 2
         for path in paths:
             assert path.ptype == 'file'
@@ -65,7 +62,6 @@ class TestSourcePath(unittest.TestCase):
         paths = src.SourcePath.from_glob(data_dir + '/tracklet.[h]*')
         assert len(paths) == 1
 
-
     def from_list(self):
         paths = src.SourcePath.from_list(data=range(10), ptype='ram')
         assert len(paths) == 10
@@ -76,7 +72,8 @@ class TestSourcePath(unittest.TestCase):
 class TestOrbitEphemerisMessageSource(unittest.TestCase):
 
     def setUp(self):
-        self.path = src.SourcePath(data = data_dir + '/state.oem', ptype='file')
+        self.path = src.SourcePath(
+            data = data_dir + '/state.oem', ptype='file')
 
     def test_init(self):
         obj = src.OrbitEphemerisMessageSource(path = self.path)
@@ -85,8 +82,10 @@ class TestOrbitEphemerisMessageSource(unittest.TestCase):
         assert src.OrbitEphemerisMessageSource.accept(self.path)
         with self.assertRaises(TypeError):
             src.OrbitEphemerisMessageSource.accept(None)
-        assert not src.OrbitEphemerisMessageSource.accept(src.SourcePath(data = data_dir + '/tracklet.tdm', ptype='file'))
-        assert not src.OrbitEphemerisMessageSource.accept(src.SourcePath(data = {'data': None}, ptype='ram'))
+        assert not src.OrbitEphemerisMessageSource.accept(
+            src.SourcePath(data = data_dir + '/tracklet.tdm', ptype='file'))
+        assert not src.OrbitEphemerisMessageSource.accept(
+            src.SourcePath(data = {'data': None}, ptype='ram'))
 
     def test_load(self):
         obj = src.OrbitEphemerisMessageSource(path = self.path)
@@ -104,15 +103,15 @@ class TestOrbitEphemerisMessageSource(unittest.TestCase):
 
         for dt in src.OrbitEphemerisMessageSource.dtype:
             assert dt[0] in obj.data.dtype.names
-    
-        nt.assert_almost_equal(obj.data[0]['x'], -7100297.113, decimal=3)
 
+        nt.assert_almost_equal(obj.data[0]['x'], -7100297.113, decimal=3)
 
 
 class TestRadarTrackingDataMessageSource(unittest.TestCase):
 
     def setUp(self):
-        self.path = src.SourcePath(data = data_dir + '/tracklet.tdm', ptype='file')
+        self.path = src.SourcePath(
+            data = data_dir + '/tracklet.tdm', ptype='file')
 
     def test_init(self):
         obj = src.RadarTrackingDataMessage(path = self.path)
@@ -121,8 +120,10 @@ class TestRadarTrackingDataMessageSource(unittest.TestCase):
         assert src.RadarTrackingDataMessage.accept(self.path)
         with self.assertRaises(TypeError):
             src.RadarTrackingDataMessage.accept(None)
-        assert not src.RadarTrackingDataMessage.accept(src.SourcePath(data = data_dir + '/state.oem', ptype='file'))
-        assert not src.RadarTrackingDataMessage.accept(src.SourcePath(data = {'data': None}, ptype='ram'))
+        assert not src.RadarTrackingDataMessage.accept(
+            src.SourcePath(data = data_dir + '/state.oem', ptype='file'))
+        assert not src.RadarTrackingDataMessage.accept(
+            src.SourcePath(data = {'data': None}, ptype='ram'))
 
     def test_load(self):
         obj = src.RadarTrackingDataMessage(path = self.path)
@@ -140,6 +141,6 @@ class TestRadarTrackingDataMessageSource(unittest.TestCase):
 
         for dt in src.RadarTrackingDataMessage.dtype:
             assert dt[0] in obj.data.dtype.names
-    
-        nt.assert_almost_equal(obj.data[0]['r'], 10539.162206964465e3, decimal=5)
 
+        nt.assert_almost_equal(
+            obj.data[0]['r'], 10539.162206964465e3, decimal=5)
