@@ -4,22 +4,24 @@
 
 '''
 
-#Python standard import
+# Python standard import
 import copy
 
-#Third party import
+# Third party import
 from tqdm import tqdm
 import numpy as np
-from mpi4py import MPI
 
-#Local import
-from .. import sources
-from .posterior import Posterior
-from .posterior import _named_to_enumerated, _enumerated_to_named
+try:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+except ImportError:
+    class COMM_WORLD:
+        size = 1
+        rank = 0
+    comm = COMM_WORLD()
+
+# Local import
 from .least_squares import OptimizeLeastSquares
-
-
-comm = MPI.COMM_WORLD
 
 
 def mpi_wrap(run):
@@ -53,14 +55,14 @@ def mpi_wrap(run):
             return self.results
         else:
             return run(self, *args, **kwargs)
-        
 
     return new_run
 
 
-
 class MCMCLeastSquares(OptimizeLeastSquares):
-    '''Markov Chain Monte Carlo sampling of the posterior, assuming all measurement errors are Gaussian (thus the log likelihood becomes a least squares).
+    '''Markov Chain Monte Carlo sampling of the posterior, 
+    assuming all measurement errors are Gaussian (thus the log likelihood 
+    becomes a least squares).
     '''
 
     REQUIRED = OptimizeLeastSquares.REQUIRED + [
@@ -83,113 +85,125 @@ class MCMCLeastSquares(OptimizeLeastSquares):
 
     def __init__(self, data, variables, **kwargs):
         super(MCMCLeastSquares, self).__init__(data, variables, **kwargs)
-    
 
     @mpi_wrap
     def run(self):
         if self.kwargs['start'] is None and self.kwargs['prior'] is None:
             raise ValueError('No start value or prior given.')
-        
+
         start = self.kwargs['start']
         xnow = np.copy(start)
         step = np.copy(self.kwargs['step'])
 
         steps = self.kwargs['tune'] + self.kwargs['steps']
         chain = np.empty((steps,), dtype=start.dtype)
-        
+
         logpost = self.evalute(xnow)
 
         if self.kwargs['method'] == 'SCAM':
-            
+
             accept = np.zeros((len(self.variables),), dtype=start.dtype)
             tries = np.zeros((len(self.variables),), dtype=start.dtype)
-            
+
             if self.kwargs['proposal'] == 'normal':
                 proposal_cov = np.eye(len(self.variables), dtype=np.float64)
-                proposal_mu = np.zeros((len(self.variables,)), dtype=np.float64)
+                proposal_mu = np.zeros(
+                    (len(self.variables,)), dtype=np.float64)
                 proposal_axis = np.eye(len(self.variables), dtype=np.float64)
             elif self.kwargs['proposal'] == 'LinSigma':
 
                 deltas = self.kwargs['jacobian_delta']
                 if not isinstance(deltas, np.ndarray):
-                    deltas = np.ones((len(self.variables),), dtype=np.float64)*deltas
+                    deltas = np.ones((len(self.variables),),
+                                     dtype=np.float64)*deltas
 
-                Sigma_orb = self.linear_MAP_covariance(start, deltas, prior_cov_inv=None)
+                Sigma_orb = self.linear_MAP_covariance(
+                    start, deltas, prior_cov_inv=None)
 
-                proposal_mu = np.zeros((len(self.variables,)), dtype=np.float64)
+                proposal_mu = np.zeros(
+                    (len(self.variables,)), dtype=np.float64)
                 eigs, proposal_axis = np.linalg.eig(Sigma_orb)
                 proposal_cov = np.diag(eigs)
             else:
-                raise ValueError(f'proposal option "{self.kwargs["proposal"]}" not recognized')
+                raise ValueError(f'proposal option "{self.kwargs["proposal"]}"\
+                 not recognized')
 
-
-            print('\n{} running {}'.format(type(self).__name__, self.kwargs['method']))
+            print('\n{} running {}'.format(
+                type(self).__name__, self.kwargs['method']))
             pbars = []
             for pbar_id in range(comm.size):
                 pbars.append(tqdm(range(steps), ncols=100))
             pbar = pbars[comm.rank]
 
             for ind in pbar:
-                pbar.set_description('Sampling log-posterior = {:<10.3f} '.format(logpost))
+                pbar.set_description(
+                    'Sampling log-posterior = {:<10.3f} '.format(logpost))
 
                 xtry = np.copy(xnow)
 
                 pi = int(np.floor(np.random.rand(1)*len(self.variables)))
                 var = self.variables[pi]
 
-                proposal0 = np.random.multivariate_normal(proposal_mu, proposal_cov)
-                proposal = proposal0[pi]*proposal_axis[:,pi]
+                proposal0 = np.random.multivariate_normal(
+                    proposal_mu, proposal_cov)
+                proposal = proposal0[pi]*proposal_axis[:, pi]
 
                 for vind, v in enumerate(self.variables):
                     xtry[0][v] += proposal[vind]*step[0][var]
-                
+
                 logpost_try = self.evalute(xtry)
                 alpha = np.log(np.random.rand(1))
-                
+
                 if logpost_try > logpost:
                     _accept = True
                 elif (logpost_try - alpha) > logpost:
                     _accept = True
                 else:
                     _accept = False
-                
+
                 tries[var] += 1.0
-                
+
                 if _accept:
                     logpost = logpost_try
                     xnow = xtry
                     accept[var] += 1.0
 
-                if ind % self.kwargs['method_options']['adapt_interval'] == 0 and ind > 0:
+                ad_inv = self.kwargs['method_options']['adapt_interval']
+                ac_min = self.kwargs['method_options']['accept_min']
+                ac_max = self.kwargs['method_options']['accept_max']
+                if ind % ad_inv == 0 and ind > 0:
                     for name in self.variables:
                         ratio = accept[0][name]/tries[0][name]
 
-                        if ratio > self.kwargs['method_options']['accept_max']:
+                        if ratio > ac_max:
                             step[0][name] *= 2.0
-                        elif ratio < self.kwargs['method_options']['accept_min']:
+                        elif ratio < ac_min:
                             step[0][name] /= 2.0
-                        
+
                         accept[0][name] = 0.0
                         tries[0][name] = 0.0
-                
 
-                # if ind % (steps//self.kwargs['method_options']['adapt_interval']) == 0 and ind > 0:
+                # ad_step_ind = (steps//ad_inv)
+                # if ind % ad_step_ind == 0 and ind > 0:
                 #     if self.kwargs['proposal'] == 'adaptive':
-                #         _data = np.empty((len(self.variables), ind), dtype=np.float64)
+                #         _data = np.empty(
+                #             (len(self.variables), ind), 
+                #             dtype=np.float64,
+                #         )
                 #         for dim, var in enumerate(self.variables):
-                #             _data[dim,:] = chain[:ind][var]
+                #             _data[dim, :] = chain[:ind][var]
                 #         _proposal_cov = np.corrcoef(_data)
-                #
+
                 #         if not np.any(np.isnan(_proposal_cov)):
                 #             proposal_cov = _proposal_cov
                 #     else:
-                #         raise Exception('Proposal "{}" not supported.'.format(self.kwargs['proposal']))
-
+                #         raise Exception('Proposal "{}" not \
+                #             supported.'.format(self.kwargs['proposal']))
 
                 chain[ind] = xnow
         else:
             raise ValueError('No method found')
-            
+
         chain = chain[self.kwargs['tune']:]
 
         self.results.trace = chain.copy()
@@ -197,16 +211,12 @@ class MCMCLeastSquares(OptimizeLeastSquares):
 
         return self.results
 
-
     def _fill_results(self):
         post_map = np.empty((1,), dtype=self.results.trace.dtype)
         for var in self.variables:
             post_map[var] = np.mean(self.results.trace[var])
-        
+
         self.results.MAP = post_map
         self.loglikelihood(post_map)
         self.results.residuals = copy.deepcopy(self._tmp_residulas)
         self.results.date = self.data['date0']
-    
-
-

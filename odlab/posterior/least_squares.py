@@ -4,21 +4,25 @@
 
 '''
 
-#Python standard import
-import os
+# Python standard import
 import copy
 
-#Third party import
+# Third party import
 from tqdm import tqdm
 import scipy.stats
 import scipy.optimize as optimize
 import numpy as np
 from numpy.lib.recfunctions import structured_to_unstructured
-from mpi4py import MPI
+try:
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+except ImportError:
+    class COMM_WORLD:
+        size = 1
+        rank = 0
+    comm = COMM_WORLD()
 
-
-comm = MPI.COMM_WORLD
-#Local import
+# Local import
 from .. import sources
 from .posterior import Posterior
 from .posterior import _named_to_enumerated, _enumerated_to_named
@@ -72,10 +76,10 @@ class OptimizeLeastSquares(Posterior):
             if var not in st_var:
                 self._variable_to_param.append((var, vari))
 
-
         for source_ind, source in enumerate(data['sources']):
             if not isinstance(source, sources.ObservationSource):
-                raise ValueError('Non-observation data detected, "{}" not supported'.format(type(source)))
+                raise ValueError('Non-observation data detected, \
+                    "{}" not supported'.format(type(source)))
 
             Model__ = self.data['Models'][source_ind]
 
@@ -89,7 +93,8 @@ class OptimizeLeastSquares(Posterior):
             }
             for arg in req_args:
                 if arg not in self.data:
-                    raise TypeError('Model REQUIRED data "{}" not found'.format(arg))
+                    raise TypeError(
+                        'Model REQUIRED data "{}" not found'.format(arg))
                 model_data[arg] = self.data[arg]
 
             model = source.generate_model(
@@ -97,16 +102,19 @@ class OptimizeLeastSquares(Posterior):
                 **model_data
             )
             self._models.append(model)
-        
+
         self._tmp_residulas = []
         for ind in range(len(self._models)):
             self._tmp_residulas.append(
-                np.empty((len(self.data['sources'][ind].data),), dtype=self._models[ind].dtype)
+                np.empty(
+                    (len(self.data['sources'][ind].data),), 
+                    dtype=self._models[ind].dtype,
+                )
             )
-        
 
     def model_jacobian(self, state0, deltas):
-        '''Calculate the observation and its numerical Jacobean of a state given the current models. 
+        '''Calculate the observation and its numerical Jacobean 
+        of a state given the current models. 
 
         #TODO: Docstring
         '''
@@ -120,10 +128,10 @@ class OptimizeLeastSquares(Posterior):
         data0 = []
         for ind in range(n_sources):
             data0 += [self._models[ind].evaluate(state_, **params)]
-            meas_n += len(self._models[ind].data['t'])*len(self._models[ind].dtype)
+            t_len = len(self._models[ind].data['t'])
+            meas_n += t_len*len(self._models[ind].dtype)
 
-        
-        Sigma = np.zeros([meas_n,], dtype=np.float64)
+        Sigma = np.zeros((meas_n,), dtype=np.float64)
 
         meas_ind0 = 0
         for sc_ind in range(n_sources):
@@ -133,13 +141,13 @@ class OptimizeLeastSquares(Posterior):
 
                 start_ind = meas_ind0 + var_ind*tn
                 end_ind = meas_ind0 + (var_ind + 1)*tn
-                Sigma[start_ind:end_ind] = tracklets[sc_ind].data[var + '_sd']**2.0
+                sig = tracklets[sc_ind].data[var + '_sd']**2.0
+                Sigma[start_ind:end_ind] = sig
 
                 var_ind += 1
             meas_ind0 += tn*len(self._models[sc_ind].dtype)
 
-
-        J = np.zeros([meas_n,len(self.variables)], dtype=np.float64)
+        J = np.zeros([meas_n, len(self.variables)], dtype=np.float64)
 
         for ind, var in enumerate(self.variables):
 
@@ -167,38 +175,37 @@ class OptimizeLeastSquares(Posterior):
 
         return data0, J, Sigma
 
-
     def linear_MAP_covariance(self, MAP, deltas, prior_cov_inv=None):
         data0, J, Sigma_m_diag = self.model_jacobian(MAP, deltas)
         Sigma_m_inv = np.diag(1.0/Sigma_m_diag)
 
         if prior_cov_inv is None:
-            Sigma_orb = np.linalg.inv(np.transpose(J) @ Sigma_m_inv @ J)
+            Sigma_orb = np.linalg.inv(
+                np.transpose(J) @ Sigma_m_inv @ J)
         else:
-            Sigma_orb = np.linalg.inv(np.transpose(J) @ Sigma_m_inv @ J + prior_cov_inv)
+            Sigma_orb = np.linalg.inv(
+                np.transpose(J) @ Sigma_m_inv @ J + prior_cov_inv)
 
         return Sigma_orb
-
 
     def logprior(self, state):
         '''The logprior function
         '''
         logprob = 0.0
-        
+
         if self.kwargs['prior'] is None:
             return logprob
-        
+
         for prior in self.kwargs['prior']:
             _state = _named_to_enumerated(state, prior['variables'])
             dist = getattr(scipy.stats, prior['distribution'])
-            
+
             _pr = dist.logpdf(_state, **prior['params'])
             if isinstance(_pr, np.ndarray):
                 _pr = _pr[0]
             logprob += _pr
-        
-        return logprob
 
+        return logprob
 
     def _get_state_param(self, state):
         state_all = _named_to_enumerated(state, self.variables)
@@ -219,40 +226,42 @@ class OptimizeLeastSquares(Posterior):
 
         return state_, params
 
-
     def loglikelihood(self, state):
         '''The loglikelihood function
         '''
 
         tracklets = self.data['sources']
         n_tracklets = len(tracklets)
-        
+
         state_, params = self._get_state_param(state)
 
         logsum = 0.0
         for ind in range(n_tracklets):
-            
+
             sim_data = self._models[ind].evaluate(state_, **params)
-            _residuals = self._models[ind].distance(sim_data, tracklets[ind].data)
+            _residuals = self._models[ind].distance(
+                sim_data, 
+                tracklets[ind].data,
+            )
             for name, _ in self._models[ind].dtype:
                 self._tmp_residulas[ind][name] = _residuals[name]
 
             num = len(self._models[ind].data['t'])
-            
+
             if 'cov' in tracklets[ind].data.dtype.names:
                 names = tracklets[ind].meta['variables']
 
                 for ti in range(num):
                     xi = structured_to_unstructured(_residuals[ti][names])
                     cov = tracklets[ind].data['cov'][ti]
-                    
+
                     logsum += xi.T*np.linalg.inv(cov)*xi
             else:
                 for name, _ in self._models[ind].dtype:
-                    logsum += np.sum(-1.0*_residuals[name]**2.0/(tracklets[ind].data[name + '_sd']**2.0))
+                    tr_var = tracklets[ind].data[name + '_sd']**2.0
+                    logsum += np.sum(-1.0*_residuals[name]**2.0/tr_var)
 
         return 0.5*logsum
-
 
     def run(self):
         if self.kwargs['start'] is None and self.kwargs['prior'] is None:
@@ -270,20 +279,22 @@ class OptimizeLeastSquares(Posterior):
             except:
                 val = -np.inf
                 raise
-            
+
             pbar.update(1)
             pbar.set_description("Least Squares = {:<10.3f} ".format(-val))
 
             return -val
-        
-        print('\n{} running {}'.format(type(self).__name__, self.kwargs['method']))
+
+        print('\n{} running {}'.format(
+            type(self).__name__, self.kwargs['method']))
 
         pbars = []
         for pbar_id in range(comm.size):
             pbars.append(tqdm(total=maxiter, ncols=100))
         pbar = pbars[comm.rank]
         for ind in range(comm.size):
-            if ind != comm.rank: pbars[ind].close()
+            if ind != comm.rank:
+                pbars[ind].close()
 
         xhat = optimize.minimize(
             fun,
@@ -301,7 +312,6 @@ class OptimizeLeastSquares(Posterior):
 
         return self.results
 
-
     def residuals(self, state):
 
         self.loglikelihood(state)
@@ -313,4 +323,3 @@ class OptimizeLeastSquares(Posterior):
                 'residuals': resid.copy(),
             })
         return residuals
-

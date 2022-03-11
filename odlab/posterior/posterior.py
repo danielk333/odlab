@@ -4,24 +4,19 @@
 
 '''
 
-#Python standard import
-import os
-import copy
-import glob
-
-#Third party import
+# Third party import
 import h5py
-import scipy
-import scipy.stats
-import scipy.optimize as optimize
 import numpy as np
 
-#Local import
+# Local import
 from .. import sources
 
 
 def _named_to_enumerated(state, names):
-    return np.array([state[name] for name in names], dtype=np.float64).flatten()
+    return np.array(
+        [state[name] for name in names], 
+        dtype=np.float64,
+    ).flatten()
 
 
 def _enumerated_to_named(state, names):
@@ -30,7 +25,6 @@ def _enumerated_to_named(state, names):
     for ind, name in enumerate(names):
         _state[name] = state[ind]
     return _state
-
 
 
 class PosteriorParameters(object):
@@ -54,7 +48,8 @@ class PosteriorParameters(object):
         results = cls()
         if isinstance(path, sources.SourcePath):
             if path.ptype != 'file':
-                raise TypeError('Can only load posterior data from file, not "{}"'.format(path.ptype))
+                raise TypeError('Can only load posterior data from file, \
+                    not "{}"'.format(path.ptype))
             _path = path.data
         else:
             _path = path
@@ -71,20 +66,19 @@ class PosteriorParameters(object):
 
         return results
 
-
     def __getitem__(self, key):
         if key in self.trace.dtype.names:
             return self.trace[key]
         else:
             return KeyError('No results exists for "{}"'.format(key))
 
-
     def load(self, path):
         '''Load evaluated posterior
         '''
         if isinstance(path, sources.SourcePath):
             if path.ptype != 'file':
-                raise TypeError('Can only load posterior data from file, not "{}"'.format(path.ptype))
+                raise TypeError('Can only load posterior data from file, \
+                    not "{}"'.format(path.ptype))
             _path = path.data
         else:
             _path = path
@@ -94,10 +88,12 @@ class PosteriorParameters(object):
             if self.variables is not None:
                 for var in _vars:
                     if var not in self.variables:
-                        raise Exception('Variable spaces do not match between current and loaded data')
+                        raise Exception('Variable spaces do not match between \
+                            current and loaded data')
                 for var in self.variables:
                     if var not in _vars:
-                        raise Exception('Variable spaces do not match between current and loaded data')
+                        raise Exception('Variable spaces do not match between \
+                            current and loaded data')
             else:
                 self.variables = _vars
             if self.results is not None:
@@ -111,25 +107,25 @@ class PosteriorParameters(object):
             if self.residuals is not None:
                 grp = hf['residuals/']
                 for key in grp:
-                    results.residuals.append(grp['{}'.format(ind)][()])
+                    self.residuals.residuals.append(grp['{}'.format(key)][()])
             else:
                 self.residuals = []
                 grp = hf['residuals/']
                 for key in grp:
-                    self.residuals.append(grp['{}'.format(ind)][()])
+                    self.residuals.append(grp['{}'.format(key)][()])
             if self.date is not None:
                 date_ = hf['date'][()].view('<M8[us]')
                 if self.date != date_:
-                    raise Exception('Cannot load data from another epoch "{}" vs "{}"'.format(self.date, date_))
-
-
+                    raise Exception('Cannot load data from another \
+                        epoch "{}" vs "{}"'.format(self.date, date_))
 
     def save(self, path):
         '''Save evaluated posterior
         '''
         if isinstance(path, sources.SourcePath):
             if path.ptype != 'file':
-                raise TypeError('Can only write posterior data to file, not "{}"'.format(path.ptype))
+                raise TypeError('Can only write posterior data to file, \
+                    not "{}"'.format(path.ptype))
             _path = path.data
         else:
             _path = path
@@ -145,8 +141,7 @@ class PosteriorParameters(object):
                 grp.create_dataset(
                         '{}'.format(ind),
                         data=self.residuals[ind],
-                    )
-
+                )
 
     def autocovariance(self, max_k = None, min_k = None):
         if max_k is None:
@@ -161,7 +156,6 @@ class PosteriorParameters(object):
             if min_k >= len(self.trace):
                 min_k = len(self.trace)-1
 
-
         gamma = np.empty((max_k-min_k,), dtype=self.trace.dtype)
 
         _n = len(self.trace)
@@ -170,10 +164,9 @@ class PosteriorParameters(object):
             for k in range(min_k, max_k):
                 covi = self.trace[var][:(_n-k)] - self.MAP[0][var]
                 covik = self.trace[var][k:_n] - self.MAP[0][var]
-                gamma[var][k] = np.sum( covi*covik )/float(_n)
+                gamma[var][k] = np.sum(covi*covik)/float(_n)
 
         return gamma
-
 
     def batch_mean(self, batch_size):
         if batch_size > len(self.trace):
@@ -191,7 +184,6 @@ class PosteriorParameters(object):
 
         return batch_mean
 
-
     def batch_covariance(self, batch_size):
         if batch_size > len(self.trace):
             raise Exception('Not enough samples to calculate batch statistics')
@@ -201,15 +193,16 @@ class PosteriorParameters(object):
         _max_str = int(np.max([len(var) for var in self.variables]))
 
         _dtype = self.trace.dtype.names
-        _dtype = [('variable', 'U{}'.format(_max_str))] + [(name, 'float64') for name in _dtype]
+        _dtype = [('variable', 'U{}'.format(_max_str))] + \
+            [(name, 'float64') for name in _dtype]
         cov = np.empty((len(self.variables),), dtype=_dtype)
         for ind, xvar in enumerate(self.variables):
             for yvar in self.variables:
                 cov[ind]['variable'] = xvar
-                cov[ind][yvar] = np.mean( (batch_mean[xvar] - self.MAP[xvar])*(batch_mean[yvar] - self.MAP[yvar]) )/float(len(batch_mean))
+                cov[ind][yvar] = np.mean((batch_mean[xvar] - self.MAP[xvar])*(
+                    batch_mean[yvar] - self.MAP[yvar]))/float(len(batch_mean))
 
         return cov
-
 
     def batch_variance(self, batch_size):
         if batch_size > len(self.trace):
@@ -219,16 +212,15 @@ class PosteriorParameters(object):
 
         variance = np.empty((1,), dtype=self.trace.dtype)
         for var in self.variables:
-            variance[var] = np.mean( (batch_mean[var] - self.MAP[var])**2)
+            variance[var] = np.mean((batch_mean[var] - self.MAP[var])**2)
 
         return variance/float(len(batch_mean))
-
 
     def covariance_mat(self, variables=None):
         if variables is None:
             variables = self.variables
 
-        cov = np.empty((len(variables),len(variables)), dtype=np.float64)
+        cov = np.empty((len(variables), len(variables)), dtype=np.float64)
 
         mean = np.empty((1,), dtype=self.trace.dtype)
         for ind, xvar in enumerate(variables):
@@ -236,16 +228,18 @@ class PosteriorParameters(object):
 
         for xind, xvar in enumerate(variables):
             for yind, yvar in enumerate(variables):
-                cov[xind, yind] = np.sum( (self.trace[xvar] - mean[xvar])*(self.trace[yvar] - mean[yvar]) )/float(len(self.trace)-1)
+                _var = (self.trace[xvar] - mean[xvar]) \
+                    * (self.trace[yvar] - mean[yvar])
+                cov[xind, yind] = np.sum(_var)/float(len(self.trace)-1)
         return cov
-
 
     def covariance(self):
 
         _max_str = int(np.max([len(var) for var in self.variables]))
 
         _dtype = self.trace.dtype.names
-        _dtype = [('variable', 'U{}'.format(_max_str))] + [(name, 'float64') for name in _dtype]
+        _dtype = [('variable', 'U{}'.format(_max_str))] + \
+            [(name, 'float64') for name in _dtype]
         cov = np.empty((len(self.variables),), dtype=_dtype)
 
         mean = np.empty((1,), dtype=self.trace.dtype)
@@ -255,7 +249,9 @@ class PosteriorParameters(object):
         for ind, xvar in enumerate(self.variables):
             for yvar in self.variables:
                 cov[ind]['variable'] = xvar
-                cov[ind][yvar] = np.sum( (self.trace[xvar] - mean[xvar])*(self.trace[yvar] - mean[yvar]) )/float(len(self.trace)-1)
+                _var = (self.trace[xvar] - mean[xvar]) \
+                    * (self.trace[yvar] - mean[yvar])
+                cov[ind][yvar] = np.sum(_var)/float(len(self.trace)-1)
         return cov
 
     def __str__(self):
@@ -268,9 +264,9 @@ class PosteriorParameters(object):
         for ind, res in enumerate(self.residuals):
             _str += ' - Model {}'.format(ind) + '\n'
             for key in res.dtype.names:
-                _str += ' -- mean({}) = {}'.format(key, np.mean(res[key])) + '\n'
+                _str += ' -- mean({}) = {}'.format(key,
+                                                   np.mean(res[key])) + '\n'
         return _str
-
 
 
 class Posterior(object):
@@ -284,7 +280,7 @@ class Posterior(object):
         for key in self.OPTIONAL:
             if key not in kwargs:
                 continue
-            
+
             if isinstance(self.kwargs[key], dict):
                 self.kwargs[key].update(kwargs[key])
             else:
@@ -298,25 +294,20 @@ class Posterior(object):
 
         self.results = PosteriorParameters(variables = variables)
 
-
     def logprior(self, state):
         '''The logprior function, defaults to uniform if not implemented
         '''
         return 0.0
-
 
     def loglikelihood(self, state):
         '''The loglikelihood function
         '''
         raise NotImplementedError()
 
-    
     def evalute(self, state):
         return self.logprior(state) + self.loglikelihood(state)
-
 
     def run(self):
         '''Evaluate posterior
         '''
         raise NotImplementedError()
-
