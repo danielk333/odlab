@@ -14,8 +14,7 @@ import numpy as np
 import h5py
 
 # Local import
-from . import datetime as internal_datetime
-from . import ccsds
+from . import times
 
 
 _ptypes = [
@@ -331,8 +330,9 @@ class HDFSRadarTracklet(RadarTracklet):
 
             data = np.empty((len(sort_obs),), dtype=RadarTracklet.dtype)
 
-            data['date'] = internal_datetime.unix2npdt(
-                ho["m_time"][()][sort_obs])
+            data['date'] = times.unix2npdt(
+                ho["m_time"][()][sort_obs]
+            )
             data['r'] = ho["m_range"][()]*1e3
             data['v'] = ho["m_range_rate"][()]*1e3
 

@@ -4,20 +4,15 @@
 
 '''
 
-#Python standard import
+# Python standard import
 
 
-#Third party import
+# Third party import
 import numpy as np
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.patches as mpatches
-import matplotlib.path as mpath
 
-#Local import
-from .posterior import _enumerated_to_named
+# Local import
 from .posterior import _named_to_enumerated
-
 
 
 def autocorrelation(results, **kwargs):
@@ -39,10 +34,11 @@ def autocorrelation(results, **kwargs):
     fig_plots = 6
 
     for ind, var in enumerate(results.variables):
-    
+
         if ind % fig_plots == 0:
             if new_plot:
-                fig, ax_mat = plt.subplots(3, 2, figsize=(15,15), sharey=True, sharex=True)
+                fig, ax_mat = plt.subplots(3, 2, figsize=(
+                    15, 15), sharey=True, sharex=True)
                 fig.suptitle('Markov Chain autocorrelation functions')
                 figs.append(fig)
                 ax = [x for xx in ax_mat for x in xx]
@@ -60,12 +56,11 @@ def autocorrelation(results, **kwargs):
     return figs, axes
 
 
-
 def scatter_trace(results, **kwargs):
 
     thin = kwargs.get('thin', None)
 
-    km_vars = ['x','y','z','vx','vy','vz']
+    km_vars = ['x', 'y', 'z', 'vx', 'vy', 'vz']
 
     trace2 = results.trace.copy()
     for var in km_vars:
@@ -78,20 +73,20 @@ def scatter_trace(results, **kwargs):
     cols_ = len(colnames)
 
     cols = kwargs.get('columns', {
-        'x':'x [km]',
-        'y':'y [km]',
-        'z':'z [km]',
-        'vx':'$v_x$ [km/s]',
-        'vy':'$v_y$ [km/s]',
-        'vz':'$v_z$ [km/s]',
-        'A':'A [m$^2$]',
+        'x': 'x [km]',
+        'y': 'y [km]',
+        'z': 'z [km]',
+        'vx': '$v_x$ [km/s]',
+        'vy': '$v_y$ [km/s]',
+        'vz': '$v_z$ [km/s]',
+        'A': 'A [m$^2$]',
     })
     for key in colnames:
         if key not in cols:
             cols[key] = key
 
     alpha = kwargs.get('alpha', 0.01)
-    figsize = kwargs.get('figsize',(15,15))
+    figsize = kwargs.get('figsize', (15, 15))
     axes = kwargs.get('axes', None)
 
     if axes is None:
@@ -101,10 +96,16 @@ def scatter_trace(results, **kwargs):
 
     for colx in range(cols_):
         for coly in range(cols_):
-            if colx==coly:
+            if colx == coly:
                 axes[colx][coly].hist(trace2[colnames[colx]])
             else:
-                axes[colx][coly].scatter(trace2[colnames[coly]], trace2[colnames[colx]], 1.0, alpha=alpha, linewidths=0)
+                axes[colx][coly].scatter(
+                    trace2[colnames[coly]], 
+                    trace2[colnames[colx]], 
+                    1.0, 
+                    alpha=alpha, 
+                    linewidths=0,
+                )
 
             if coly > 0 and colx + 1 < cols_:
                 axes[colx][coly].xaxis.set_visible(False)
@@ -116,9 +117,8 @@ def scatter_trace(results, **kwargs):
                 axes[colx][coly].yaxis.set_visible(False)
                 axes[colx][coly].set_xlabel(cols[colnames[coly]])
             else:
-                 axes[colx][coly].set_xlabel(cols[colnames[coly]])
-                 axes[colx][coly].set_ylabel(cols[colnames[colx]])
-
+                axes[colx][coly].set_xlabel(cols[colnames[coly]])
+                axes[colx][coly].set_ylabel(cols[colnames[colx]])
 
     reference = kwargs.get('reference', None)
 
@@ -130,12 +130,19 @@ def scatter_trace(results, **kwargs):
         for colx in range(cols_):
             for coly in range(cols_):
                 if colx == coly:
-                    axes[colx][coly].axvline(x=reference[colnames[colx]][0], ymin=0, ymax=1, color='r')
+                    axes[colx][coly].axvline(
+                        x=reference[colnames[colx]][0], 
+                        ymin=0, ymax=1, color='r'
+                    )
                 else:
-                    axes[colx][coly].plot(reference[colnames[colx]][0], reference[colnames[coly]][0], 'or')
-    
+                    axes[colx][coly].plot(
+                        reference[colnames[colx]][0], 
+                        reference[colnames[coly]][0], 
+                        'or',
+                    )
+
     if cols_ > 1:
-        #scruffed from pandas scatter_matrix
+        # scruffed from pandas scatter_matrix
         lim1 = axes[0][1].get_ylim()
         locs = axes[0][1].yaxis.get_majorticklocs()
         locs = locs[(lim1[0] <= locs) & (locs <= lim1[1])]
@@ -155,7 +162,6 @@ def scatter_trace(results, **kwargs):
         fig.subplots_adjust(hspace=0, wspace=0)
 
     return fig, axes
-
 
 
 def trace(results, **kwargs):
@@ -186,13 +192,13 @@ def trace(results, **kwargs):
             coef = 1e-3
         else:
             coef = 1.0
-    
+
         if ind % fig_plots == 0:
             if new_plot:
-                fig = plt.figure(figsize=(15,15))
-                fig.suptitle(kwargs.get('title','MCMC trace plot'))
+                fig = plt.figure(figsize=(15, 15))
+                fig.suptitle(kwargs.get('title', 'MCMC trace plot'))
                 figs.append(fig)
-            
+
         if new_plot:
             ax = fig.add_subplot(231+(ind % fig_plots))
         else:
@@ -211,8 +217,7 @@ def trace(results, **kwargs):
     return figs, axes
 
 
-
-def earth_grid(ax,num_lat=25,num_lon=50,alpha=0.1,res = 100, color='black'):
+def earth_grid(ax, num_lat=25, num_lon=50, alpha=0.1, res=100, color='black'):
     lons = np.linspace(-180, 180, num_lon+1) * np.pi/180 
     lons = lons[:-1]
     lats = np.linspace(-90, 90, num_lat) * np.pi/180 
@@ -220,19 +225,19 @@ def earth_grid(ax,num_lat=25,num_lon=50,alpha=0.1,res = 100, color='black'):
     lonsl = np.linspace(-180, 180, res) * np.pi/180 
     latsl = np.linspace(-90, 90, res) * np.pi/180 
 
-    r_e=6371e3    
+    r_e = 6371e3    
     for lat in lats:
         x = r_e*np.cos(lonsl)*np.cos(lat)
         y = r_e*np.sin(lonsl)*np.cos(lat)
         z = r_e*np.ones(np.size(lonsl))*np.sin(lat)
-        ax.plot(x,y,z,alpha=alpha,linestyle='-', marker='',color=color)
+        ax.plot(x, y, z, alpha=alpha, linestyle='-', marker='', color=color)
 
     for lon in lons:
         x = r_e*np.cos(lon)*np.cos(latsl)
         y = r_e*np.sin(lon)*np.cos(latsl)
         z = r_e*np.sin(latsl)
-        ax.plot(x,y,z,alpha=alpha,color=color)
-    
+        ax.plot(x, y, z, alpha=alpha, color=color)
+
     # Hide grid lines
     ax.grid(False)
 
@@ -243,10 +248,9 @@ def earth_grid(ax,num_lat=25,num_lon=50,alpha=0.1,res = 100, color='black'):
     plt.axis('off')
 
 
-
 def orbits(posterior, **kwargs):
 
-    fig = plt.figure(figsize=(15,15))
+    fig = plt.figure(figsize=(15, 15))
     ax = fig.add_subplot(111, projection='3d')
     earth_grid(ax)
     ax.set_title(kwargs.get('title', 'Orbit determination: orbital shift'))
@@ -286,14 +290,24 @@ def orbits(posterior, **kwargs):
 
             states_obs = model.get_states(state)
             _t = model.data['t']
-            model.data['t'] = np.linspace(0, np.max(_t), num=kwargs.get('num',1000))
+            model.data['t'] = np.linspace(
+                0, np.max(_t), num=kwargs.get('num', 1000))
             states_ = model.get_states(state)
             model.data['t'] = _t
-            ax.plot(states_obs[0,:], states_obs[1,:], states_obs[2,:],"."+_col[ind],
-                label=_label[ind*2], alpha=alpha,
+            ax.plot(
+                states_obs[0, :], 
+                states_obs[1, :], 
+                states_obs[2, :], 
+                "."+_col[ind],
+                label=_label[ind*2], 
+                alpha=alpha,
             )
-            ax.plot(states_[0,:], states_[1,:], states_[2,:],"-"+_col[ind],
-                label=_label[ind*2+1], alpha=alpha,
+            ax.plot(
+                states_[0, :], 
+                states_[1, :], 
+                states_[2, :], "-"+_col[ind],
+                label=_label[ind*2+1], 
+                alpha=alpha,
             )
     ax.set_xlim(-max_range, max_range)
     ax.set_ylim(-max_range, max_range)
@@ -309,11 +323,7 @@ def orbits(posterior, **kwargs):
     return plots
 
 
-
-
 def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
-
-    ylabels = kwargs.get('ylabels', None)
 
     axes = kwargs.get('axes', None)
     if axes is None:
@@ -328,7 +338,7 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
         residual_data.append(
             posterior.residuals(state)
         )
-    
+
     plot_n = len(posterior._models)
 
     num = len(residual_data)
@@ -346,29 +356,36 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
             _ind = 0
             if new_plot:
                 axes.append([])
-                fig = plt.figure(figsize=(15,15))
-                fig.suptitle(kwargs.get('title', 'Orbit determination residuals'))
+                fig = plt.figure(figsize=(15, 15))
+                fig.suptitle(kwargs.get(
+                    'title', 'Orbit determination residuals'))
                 figs.append(fig)
 
         for vari, var in enumerate(variables):
             if new_plot:
-                ax = fig.add_subplot(100*_pltn + len(variables)*10 + 1 + vari + _ind*len(variables))
+                subpn = 100*_pltn + len(variables)*10
+                subpn += 1 + vari + _ind*len(variables)
+                ax = fig.add_subplot(subpn)
                 axes[-1].append(ax)
             else:
                 ax = axes[ind][_ind]
 
             for sti in range(num):
                 if absolute:
-                    lns = ax.semilogy(
-                        (residual_data[sti][ind]['date'] - residual_data[sti][ind]['date'][0])/np.timedelta64(1,'h'),
+                    ax.semilogy(
+                        (residual_data[sti][ind]['date'] - residual_data[sti]
+                         [ind]['date'][0])/np.timedelta64(1, 'h'),
                         np.abs(residual_data[sti][ind]['residuals'][var]),
-                        styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
+                        styles[sti], label=labels[sti], alpha = kwargs.get(
+                            'alpha', 0.5),
                     )
                 else:
-                    lns = ax.plot(
-                        (residual_data[sti][ind]['date'] - residual_data[sti][ind]['date'][0])/np.timedelta64(1,'h'),
+                    ax.plot(
+                        (residual_data[sti][ind]['date'] - residual_data[sti]
+                         [ind]['date'][0])/np.timedelta64(1, 'h'),
                         residual_data[sti][ind]['residuals'][var],
-                        styles[sti], label=labels[sti], alpha = kwargs.get('alpha',0.5),
+                        styles[sti], label=labels[sti], alpha = kwargs.get(
+                            'alpha', 0.5),
                     )
             ax.set(
                 xlabel='Time [h]',
