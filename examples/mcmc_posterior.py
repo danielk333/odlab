@@ -6,17 +6,9 @@
 import os
 import pathlib
 
-import pyod
-
-from pyod import RadarPair
-from pyod import MCMCLeastSquares, OptimizeLeastSquares
-from pyod import SourceCollection
-from pyod import SourcePath
-from pyod import PosteriorParameters
-import pyod.plot as plots
-from pyod.datetime import mjd2npdt
-from pyod.coordinates import geodetic2ecef
-from pyod.sources import RadarTracklet
+import odlab
+import sorts
+import pyorb
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -41,17 +33,17 @@ state0 = np.array([
 ])
 t = np.linspace(0, 1800/(3600*24), num=20)
 mjd0 = 54952.08
-dates = mjd2npdt(mjd0 + t)
-params = dict(A= 0.1, m = 1.0)
+dates = odlab.times.mjd2npdt(mjd0 + t)
+params = dict(A= 0.1, m = 1.0, M0=pyorb.M_earth)
 
 steps = int(1e4)
 
 r_err = 0.5e3
 v_err = 0.1e3
 
-ski_ecef = geodetic2ecef(69.34023844, 20.313166, 0.0)
-kar_ecef = geodetic2ecef(68.463862, 22.458859, 0.0)
-kai_ecef = geodetic2ecef(68.148205, 19.769894, 0.0)
+ski_ecef = sorts.frames.geodetic_to_ITRS(69.34023844, 20.313166, 0.0)
+kar_ecef = sorts.frames.geodetic_to_ITRS(68.463862, 22.458859, 0.0)
+kai_ecef = sorts.frames.geodetic_to_ITRS(68.148205, 19.769894, 0.0)
 
 rx_list = [ski_ecef, kar_ecef, kai_ecef]
 # rx_list = [ski_ecef]
@@ -75,9 +67,9 @@ for ind, name in enumerate(variables):
     step[name] = step_arr[ind]
 
 if os.path.isfile(results_data):
-    results = PosteriorParameters.load_h5(results_data)
+    results = odlab.PosteriorParameters.load_h5(results_data)
 else:
-    prop = pyod.propagator.Kepler(
+    prop = sorts.propagator.Kepler(
         settings=dict(
             in_frame='ITRS',
             out_frame='ITRS',
@@ -89,15 +81,16 @@ else:
     for rx in rx_list:
         data = dict(
             date = dates,
-            date0 = mjd2npdt(mjd0),
+            date0 = odlab.times.mjd2npdt(mjd0),
             params = params,
             tx_ecef = ski_ecef,
             rx_ecef = rx,
         )
-        radar = RadarPair(data, prop)
+        radar = odlab.RadarPair(data, prop)
         sim_data = radar.evaluate(state0, **params)
 
-        radar_data = np.empty((len(t),), dtype=RadarTracklet.dtype)
+        radar_data = np.empty(
+            (len(t),), dtype=odlab.sources.RadarTracklet.dtype)
         radar_data['date'] = dates
         radar_data['r'] = sim_data['r'] + np.random.randn(len(t))*r_err
         radar_data['v'] = sim_data['v'] + np.random.randn(len(t))*r_err
@@ -115,20 +108,20 @@ else:
             }
         )
 
-    paths = SourcePath.from_list(source_data, 'ram')
+    paths = odlab.SourcePath.from_list(source_data, 'ram')
 
-    sources = SourceCollection(paths = paths)
+    sources = odlab.SourceCollection(paths = paths)
     if comm.rank == 0:
         sources.details()
 
     input_data_state = {
         'sources': sources,
-        'Models': [RadarPair]*len(sources),
-        'date0': mjd2npdt(mjd0),
+        'Models': [odlab.RadarPair]*len(sources),
+        'date0': odlab.times.mjd2npdt(mjd0),
         'params': params,
     }
 
-    post_init = OptimizeLeastSquares(
+    post_init = odlab.OptimizeLeastSquares(
         data = input_data_state,
         variables = variables,
         state_variables = variables,
@@ -148,7 +141,7 @@ else:
 
     # mcmc_start = true_state
 
-    post = MCMCLeastSquares(
+    post = odlab.MCMCLeastSquares(
         data = input_data_state,
         variables = variables,
         state_variables = variables,
@@ -175,16 +168,16 @@ else:
         post.results.save(results_data)
     results = post.results
 
-    plots.orbits(post, true=true_state)
+    odlab.plot.orbits(post, true=true_state)
 
-    plots.residuals(
+    odlab.plot.residuals(
         post, 
         [state0_named, true_state, results.MAP], 
         ['Start', 'True', 'MAP'], 
         ['-b', '-r', '-g'], 
         absolute=False,
     )
-    plots.residuals(
+    odlab.plot.residuals(
         post, 
         [state0_named, true_state, results.MAP], 
         ['Start', 'True', 'MAP'], 
@@ -203,9 +196,9 @@ print('True error:')
 for var in variables:
     print(f'{var:<3}: {(results.MAP[var][0] - true_state[var][0])*1e-3:.3f}')
 
-plots.autocorrelation(results, max_k=steps)
-plots.trace(results, reference=true_state)
-plots.trace(results)
-plots.scatter_trace(results, reference=true_state)
+odlab.plot.autocorrelation(results, max_k=steps)
+odlab.plot.trace(results, reference=true_state)
+odlab.plot.trace(results)
+odlab.plot.scatter_trace(results, reference=true_state)
 
 plt.show()
