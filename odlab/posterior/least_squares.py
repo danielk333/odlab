@@ -183,8 +183,6 @@ class OptimizeLeastSquares(Posterior):
         data0, J, Sigma_m_diag = self.model_jacobian(MAP, deltas)
         Sigma_m_inv = np.diag(1.0/Sigma_m_diag)
 
-        print(np.transpose(J) @ Sigma_m_inv @ J)
-
         if prior_cov_inv is None:
             Sigma_orb = np.linalg.inv(
                 np.transpose(J) @ Sigma_m_inv @ J)
