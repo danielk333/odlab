@@ -86,6 +86,7 @@ def scatter_trace(results, **kwargs):
             cols[key] = key
 
     alpha = kwargs.get('alpha', 0.01)
+    size = kwargs.get('size', 1.0)
     figsize = kwargs.get('figsize', (15, 15))
     axes = kwargs.get('axes', None)
 
@@ -94,15 +95,21 @@ def scatter_trace(results, **kwargs):
     else:
         fig = None
 
+    ax_ranges = {}
+
     for colx in range(cols_):
         for coly in range(cols_):
             if colx == coly:
                 axes[colx][coly].hist(trace2[colnames[colx]])
+                ax_ranges[colnames[colx]] = (
+                    np.min(trace2[colnames[colx]]),
+                    np.max(trace2[colnames[colx]]),
+                )
             else:
                 axes[colx][coly].scatter(
                     trace2[colnames[coly]], 
                     trace2[colnames[colx]], 
-                    1.0, 
+                    size, 
                     alpha=alpha, 
                     linewidths=0,
                 )
@@ -136,26 +143,20 @@ def scatter_trace(results, **kwargs):
                     )
                 else:
                     axes[colx][coly].plot(
-                        reference[colnames[colx]][0], 
                         reference[colnames[coly]][0], 
+                        reference[colnames[colx]][0], 
                         'or',
                     )
 
+    for colx in range(cols_):
+        for coly in range(cols_):
+            if colx == coly:
+                continue
+            axes[colx][coly].set_xlim(ax_ranges[colnames[coly]])
+            axes[colx][coly].set_ylim(ax_ranges[colnames[colx]])
+
     if cols_ > 1:
-        # scruffed from pandas scatter_matrix
-        lim1 = axes[0][1].get_ylim()
-        locs = axes[0][1].yaxis.get_majorticklocs()
-        locs = locs[(lim1[0] <= locs) & (locs <= lim1[1])]
-        adj = (locs - lim1[0]) / (lim1[1] - lim1[0])
-
-        lim0 = axes[0][0].get_ylim()
-        adj = adj * (lim0[1] - lim0[0]) + lim0[0]
-        axes[0][0].yaxis.set_ticks(adj)
-
-        if np.all(locs == locs.astype(int)):
-            # if all ticks are int
-            locs = locs.astype(int)
-        axes[0][0].yaxis.set_ticklabels(locs)
+        axes[0][0].set_yticklabels(axes[-1][0].get_xticklabels())
 
     if fig is not None:
         fig.tight_layout()
@@ -326,6 +327,7 @@ def orbits(posterior, **kwargs):
 def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
 
     axes = kwargs.get('axes', None)
+
     if axes is None:
         new_plot = True
         axes = []
@@ -349,6 +351,8 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
         _pltn = plot_n
 
     _ind = 0
+    units = kwargs.get('units', {})
+    
     for ind in range(plot_n):
         variables = [x[0] for x in posterior._models[ind].dtype]
 
@@ -389,7 +393,7 @@ def residuals(posterior, states, labels, styles, absolute=False, **kwargs):
                     )
             ax.set(
                 xlabel='Time [h]',
-                ylabel=f'{var} residuals',
+                ylabel=f'{var} residuals [{units.get(var, "")}]',
                 title='Model {}'.format(ind),
             )
             ax.legend()
