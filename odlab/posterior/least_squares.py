@@ -309,6 +309,7 @@ class OptimizeLeastSquares(Posterior):
             start,
             method = self.kwargs['method'],
             options = self.kwargs['options'],
+            bounds = self.kwargs['options'].pop('bounds', None),
         )
         pbar.close()
 
