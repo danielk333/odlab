@@ -76,11 +76,13 @@ class MCMCLeastSquares(OptimizeLeastSquares):
             'accept_max': 0.5,
             'accept_min': 0.3,
             'adapt_interval': 1000,
+            'proposal_adapt_interval': 10000,
         },
         'prior': None,
         'tune': 1000,
         'proposal': 'normal',
         'jacobian_delta': 0.1,
+        'MPI': True,
     }
 
     def __init__(self, data, variables, **kwargs):
@@ -105,7 +107,7 @@ class MCMCLeastSquares(OptimizeLeastSquares):
             accept = np.zeros((len(self.variables),), dtype=start.dtype)
             tries = np.zeros((len(self.variables),), dtype=start.dtype)
 
-            if self.kwargs['proposal'] == 'normal':
+            if self.kwargs['proposal'] in ['normal', 'adaptive']:
                 proposal_cov = np.eye(len(self.variables), dtype=np.float64)
                 proposal_mu = np.zeros(
                     (len(self.variables,)), dtype=np.float64)
@@ -169,6 +171,7 @@ class MCMCLeastSquares(OptimizeLeastSquares):
                     accept[var] += 1.0
 
                 ad_inv = self.kwargs['method_options']['adapt_interval']
+                cov_ad_inv = self.kwargs['method_options']['proposal_adapt_interval']
                 ac_min = self.kwargs['method_options']['accept_min']
                 ac_max = self.kwargs['method_options']['accept_max']
                 if ind % ad_inv == 0 and ind > 0:
@@ -183,22 +186,18 @@ class MCMCLeastSquares(OptimizeLeastSquares):
                         accept[0][name] = 0.0
                         tries[0][name] = 0.0
 
-                # ad_step_ind = (steps//ad_inv)
-                # if ind % ad_step_ind == 0 and ind > 0:
-                #     if self.kwargs['proposal'] == 'adaptive':
-                #         _data = np.empty(
-                #             (len(self.variables), ind), 
-                #             dtype=np.float64,
-                #         )
-                #         for dim, var in enumerate(self.variables):
-                #             _data[dim, :] = chain[:ind][var]
-                #         _proposal_cov = np.corrcoef(_data)
+                if ind % cov_ad_inv == 0 and ind > 0 and self.kwargs['proposal'] == 'adaptive':
+                    _data = np.empty(
+                        (len(self.variables), ind), 
+                        dtype=np.float64,
+                    )
+                    for dim, var in enumerate(self.variables):
+                        _data[dim, :] = chain[:ind][var]
+                    _proposal_cov = np.corrcoef(_data)
 
-                #         if not np.any(np.isnan(_proposal_cov)):
-                #             proposal_cov = _proposal_cov
-                #     else:
-                #         raise Exception('Proposal "{}" not \
-                #             supported.'.format(self.kwargs['proposal']))
+                    if not np.any(np.isnan(_proposal_cov)):
+                        eigs, proposal_axis = np.linalg.eig(_proposal_cov)
+                        proposal_cov = np.diag(eigs)
 
                 chain[ind] = xnow
         else:
