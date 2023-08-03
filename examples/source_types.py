@@ -3,84 +3,35 @@
 '''Example showing how SourceCollection's and Path's can be used to load data.
 
 '''
-
-import numpy as np
 import pathlib
+import odlab
 
-from odlab import SourceCollection, SourcePath
-import odlab.sources as src
-
+print("Supported sources:")
+print(odlab.SOURCES.keys())
 
 data_dir = (pathlib.Path(__file__).parent / 'example_data').resolve()
+tdm_files = list(data_dir.glob("*.tdm"))
+hdf5_files = list(data_dir.glob("*.h5"))
+
+print("TDM radar data")
+tdm_data = odlab.load_source(tdm_files[0], "radar_text_tdm")
+print(tdm_data)
+
+print("HDF5 radar data")
+h5_data = odlab.load_source(hdf5_files[0], "radar_hdf")
+print(h5_data)
 
 
-def example_wrapper(text):
-    def genereated_wrapper(func):
-        def display_example(*args, **kwargs):
-            eg_str = '=== Example: {} ==='.format(text)
-            print('='*len(eg_str))
-            print(eg_str)
-            print('='*len(eg_str))
+# Or trough the convince mass loader
 
-            ret = func(*args, **kwargs)
+dfs = odlab.glob_sources(
+    data_dir, 
+    {
+        "radar_text_tdm": "*.tdm",
+        "radar_hdf": "*.h5",
+    }
+)
 
-            print('='*len(eg_str) + '\n')
-
-            return ret
-        return display_example
-    return genereated_wrapper
-
-
-@example_wrapper('Loading sources from RAM')
-def example_ram_data():
-    data = [
-        {
-            'data': np.array([], dtype=src.SimulatedStateSource.dtype),
-            'meta': {'frame': None},
-            'index': 42,
-        },
-        {
-            'data': np.array([], dtype=src.SimulatedStateSource.dtype),
-            'meta': {'frame': None},
-            'index': 43,
-        }
-    ]
-
-    paths = SourcePath.from_list(data, 'ram')
-
-    for path in paths:
-        print(path)
-
-    sources = SourceCollection(paths = paths)
-    sources.details()
-
-
-@example_wrapper('Parsing folders recursively for data files')
-def example_recursive_file_find():
-
-    paths = SourcePath.recursive_folder(data_dir, ['tdm', 'oem'])
-
-    for path in paths:
-        print(path)
-
-
-@example_wrapper('Using glob to find data files')
-def example_glob_file_find():
-
-    paths = SourcePath.from_glob(data_dir / '*.oem')
-
-    for path in paths:
-        print(path)
-
-
-@example_wrapper('Using glob to create a source collection')
-def example_glob_load():
-    sources = SourceCollection(paths = SourcePath.from_glob(data_dir / '*'))
-    sources.details()
-
-
-if __name__ == '__main__':
-    example_ram_data()
-    example_recursive_file_find()
-    example_glob_file_find()
-    example_glob_load()
+print(f"{len(dfs)} files loaded")
+print(f"File 2 ({dfs[1].attrs['path']}):")
+print(dfs[1])

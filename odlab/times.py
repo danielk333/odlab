@@ -4,10 +4,7 @@
 
 '''
 
-# Python standard import
 import time
-
-# Third party import
 import numpy as np
 
 

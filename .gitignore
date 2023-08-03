@@ -4,6 +4,9 @@
 # Temp data from examples
 examples/tmp
 
+#vscode
+.vscode
+
 #Vi/vim
 *~
 .*.sw?

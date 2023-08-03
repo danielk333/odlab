@@ -1,82 +1,117 @@
+import pathlib
+import os
 import time
-from functools import wraps
+
+try:
+    import yappi
+except ImportError:
+    yappi = None
+
+PACKAGE_PATH = str(pathlib.Path(__file__).parent)
+START_TIME = None
 
 
-class BaseProfiler:
-    def __init__(self):
-        self.executions = {}
-        self.times = {}
-        self.names = []
-        self.enabled = {}
-        self.timings = {}
-
-    def start(self, name):
-        self.timings[name] = time.time()
-
-    def stop(self, name):
-        dt = time.time() - self.timings[name]
-        self.timings[name] = None
-        self.add(name, dt)
-        return dt
-
-    def init(self, name, enabled):
-        self.names.append(name)
-        self.enabled[name] = enabled
-        self.executions[name] = 0
-        self.times[name] = 0.0
-
-    def add(self, name, dt):
-        if self.enabled[name]:
-            self.executions[name] += 1
-            self.times[name] += dt
-
-    def __str__(self):
-        means = self.means()
-        max_len = max([len(x) for x in self.names])
-        rows = [
-            f'{name:<{max_len}} @ {self.executions[name]} x \
-            {means.get(name,0):.3e} s = {self.times[name]:.3e} s total'
-            for name in self.names
-            if self.executions[name] > 0
-        ]
-        return '\n'.join(rows)
-
-    def means(self):
-        return {
-            name: self.times[name]/self.executions[name]
-            for name in self.names 
-            if self.executions[name] > 0
-        }
-
-    def enable(self, prefix):
-        for name in self.names:
-            if name.startswith(prefix):
-                self.enabled[name] = True
+def _path_to_module(path):
+    if PACKAGE_PATH not in path:
+        return ""
+    stem = pathlib.Path(path).stem
+    path = "pyant" + os.sep + path.replace(PACKAGE_PATH, "").strip(os.sep)
+    module = path.split(os.sep)
+    module[-1] = stem
+    return ".".join(module)
 
 
-PROFILER = BaseProfiler()
+def check_yappi(func):
+    def checked_func(*args, **kwargs):
+        if yappi is None:
+            raise ImportError("'yappi' not installed, please install to profile")
+        return func(*args, **kwargs)
+
+    return checked_func
 
 
-def timeing(prefix, enabled=False):
-    '''Decorator that adds executing timing
-    '''
+@check_yappi
+def profile():
+    global START_TIME
+    START_TIME = time.time()
+    yappi.set_clock_type("cpu")
+    yappi.start()
 
-    def timeing_wrapper(func):
-        name = f'{prefix}.{func.__name__}'
-        PROFILER.init(name, enabled)
 
-        @wraps(func)
-        def timed_func(*args, **kwargs):
-            if PROFILER.enabled[name]:
-                t0 = time.time()
+@check_yappi
+def get_profile(modules=None):
+    if modules is None:
+        modules = ["pyant"]
+    stats = yappi.get_func_stats(
+        filter_callback=lambda x: any(
+            list(_path_to_module(x.module).startswith(mod) for mod in modules)
+        ),
+    )
+    stats = stats.sort("ttot", "desc")
 
-            ret = func(*args, **kwargs)
+    total = time.time() - START_TIME
+    return stats, total
 
-            if PROFILER.enabled[name]:
-                dt = time.time() - t0
-                PROFILER.add(name, dt)
 
-            return ret
+def print_profile(stats, total=None):
+    header = [
+        "Name",
+        "Module",
+        "Calls",
+        "Total [s]",
+        "Function [s]",
+        "Average [s]",
+    ]
+    column_sizes = [len(title) for title in header]
+    formats = [""] * 3 + ["1.4e"] * 3
 
-        return timed_func
-    return timeing_wrapper
+    if total is not None:
+        header += ["Total [%]"]
+        column_sizes += [len(header[-1])]
+        formats += ["2.3f"]
+
+    if total is None:
+        total = 1
+
+    for ind in range(3, len(header)):
+        if column_sizes[ind] < 6:
+            column_sizes[ind]
+
+    datas = [
+        (
+            fn.name,
+            _path_to_module(fn.module),
+            f"{fn.ncall}",
+            fn.ttot,
+            fn.tsub,
+            fn.tavg,
+            fn.ttot / total * 100,
+        )
+        for fn in stats
+    ]
+    for data in datas:
+        for ind in range(3):
+            if column_sizes[ind] < len(data[ind]):
+                column_sizes[ind] = len(data[ind])
+
+    _str = " | ".join([f"{title:^{size}}" for title, size in zip(header, column_sizes)])
+    print(_str)
+    print("-" * len(_str))
+
+    for data in datas:
+        _str = " | ".join(
+            [
+                f"{x:{fmt}}".ljust(size)
+                for x, size, fmt in zip(data[: len(header)], column_sizes, formats)
+            ]
+        )
+        print(_str)
+
+
+@check_yappi
+def profile_stop(clear=True):
+    yappi.stop()
+    if clear:
+        global START_TIME
+        START_TIME = None
+        yappi.clear_stats()

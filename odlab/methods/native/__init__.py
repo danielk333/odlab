@@ -1,0 +1,1 @@
+from .maximize_posterior import ScipyMaximizePosterior

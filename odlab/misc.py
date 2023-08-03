@@ -3,17 +3,13 @@
 '''
 
 '''
-
-# Python standard import
-
-# Third party import
+import logging
 import numpy as np
-from numpy.lib.recfunctions import structured_to_unstructured
-from numpy.lib.recfunctions import unstructured_to_structured
 from tqdm import tqdm
 
-# Local import
 from . import times
+
+logger = logging.getLogger(__name__)
 
 
 def propagate_results(t, date0, results, propagator, num=None, params=None):
