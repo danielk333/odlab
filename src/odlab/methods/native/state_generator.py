@@ -13,4 +13,4 @@ class sortsPropagator(StateGenerator):
     def get_states(self, state0, times):
         times = times
         t = (times - self.epoch).sec
-        return self.propagator(t, state0, self.epoch, **self.propagator_args)
+        return self.propagator.propagate(t, state0, self.epoch, **self.propagator_args)

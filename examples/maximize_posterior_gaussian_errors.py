@@ -26,8 +26,9 @@ assert len(dfs) > 0, "Run the 'simulate_radar_data.py' before trying this"
 
 state0_true = np.load(data_dir / "state0.npy")
 state0 = state0_true.copy()
-state0[:3] += np.random.randn(3, 1)*1e3
-state0[3:] += np.random.randn(3, 1)*1e1
+state0[:3, :] += np.random.randn(3, 1)*1e3
+state0[3:, :] += np.random.randn(3, 1)*1e1
+state0 = state0.flatten()
 
 prop = sorts.propagator.Kepler(
     settings=dict(
@@ -51,3 +52,10 @@ od_solver = methods.MaximizeGaussianErrorPosterior(
     measurements, 
     state_generator,
 )
+
+logl = od_solver.loglikelihood(state0_true.flatten())
+print(logl)
+
+result = od_solver.run(state0)
+
+print(result)

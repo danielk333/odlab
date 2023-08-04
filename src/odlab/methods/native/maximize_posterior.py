@@ -4,10 +4,11 @@
 
 """
 # import copy
+import logging
 
-# from tqdm import tqdm
+from tqdm import tqdm
 # import scipy.stats
-# import scipy.optimize as optimize
+import scipy.optimize as optimize
 import numpy as np
 import pandas as pd
 from astropy.time import Time
@@ -24,6 +25,8 @@ except ImportError:
 
     comm = COMM_WORLD()
 
+logger = logging.getLogger(__name__)
+
 
 class MaximizeGaussianErrorPosterior:
     OPTIONS = {
@@ -31,6 +34,8 @@ class MaximizeGaussianErrorPosterior:
         "prior": None,
         "scipy-options": {},
         "bounds": None,
+        "maxiter": 3000,
+        "ignore_warnings": False,
     }
 
     def __init__(self, measurements, state_generator, **kwargs):
@@ -46,10 +51,20 @@ class MaximizeGaussianErrorPosterior:
             self.models.append(model)
             self.dfs.append(pd.concat(dfs))
 
-        times = pd.concat([df["date"] for df in dfs]).values
-        self.indexing = np.stack([df.index for df in dfs])
-        self.times = Time(times, format="datetime64", scale="utc")
-        breakpoint()
+        self._reduce_and_set_df_times()
+
+    def _reduce_and_set_df_times(self):
+        """Find all the input measurements times and reduce to only unique ones 
+        into a single list and set indices mapping back to the original measurements
+        """
+        times = np.concatenate([df["date"].values for df in self.dfs])
+        utimes, indices = np.unique(times, return_inverse=True)
+        self._times_df_map = np.concatenate([
+            np.full((len(df),), ind, dtype=np.int64)
+            for ind, df in enumerate(self.dfs)
+        ])
+        self._times_expand_index = indices
+        self.times = Time(utimes, format="datetime64", scale="utc")
 
     # def model_jacobian(self, state0, deltas):
     #     """Calculate the observation and its numerical Jacobean
@@ -161,77 +176,48 @@ class MaximizeGaussianErrorPosterior:
     def loglikelihood(self, state):
         """The loglikelihood function"""
         states = self.state_generator.get_states(state, self.times)
-        
-        for model, df in zip(self.models, self.dfs):
-            
-            sim_data = model.evaluate(self.times, states)
 
-        # logsum = 0.0
-        # for ind in range(n_tracklets):
-        #     sim_data = self._models[ind].evaluate(state_, **params)
-        #     _residuals = self._models[ind].distance(
-        #         sim_data,
-        #         tracklets[ind].data,
-        #     )
-        #     for name, _ in self._models[ind].dtype:
-        #         self._tmp_residulas[ind][name] = _residuals[name]
+        logsum = 0.0
+        for ind, (model, df) in enumerate(zip(self.models, self.dfs)):
+            df_state_inds = self._times_expand_index[self._times_df_map == ind]
+            sim_data = model.evaluate(df["date"], states[:, df_state_inds])
 
-        #     num = len(self._models[ind].data["t"])
+            diffs = {}
+            for var in sim_data:
+                diffs[var] = (df[var].values - sim_data[var])
+                logsum -= np.sum((diffs[var] / df[var + "_sd"].values) ** 2)
+        return 0.5 * logsum
 
-        #     for name, _ in self._models[ind].dtype:
-        #         tr_var = tracklets[ind].data[name + "_sd"] ** 2.0
-        #         logsum += np.sum(-1.0 * _residuals[name] ** 2.0 / tr_var)
+    def run(self, start):
+        maxiter = self.options["maxiter"]
 
-        # return 0.5 * logsum
+        def fun(x):
+            val = self.loglikelihood(x)
 
-    # def run(self):
-    #     if self.kwargs["start"] is None and self.kwargs["prior"] is None:
-    #         raise ValueError("No start value or prior given.")
+            pbar.update(1)
+            pbar.set_description("Posterior value = {:<10.3f} ".format(val))
 
-    #     start = _named_to_enumerated(self.kwargs["start"], self.variables)
+            return -val
 
-    #     maxiter = self.kwargs["options"].get("maxiter", 3000)
+        logger.info("\n{} running {}".format(type(self).__name__, self.options["method"]))
 
-    #     def fun(x):
-    #         _x = _enumerated_to_named(x, self.variables)
+        if self.options["ignore_warnings"]:
+            np.seterr(all="ignore")
 
-    #         try:
-    #             val = self.evalute(_x)
-    #         except Exception:
-    #             val = -np.inf
-    #             raise
+        pbar = tqdm(total=maxiter, ncols=100, position=comm.rank)
+        xhat = optimize.minimize(
+            fun,
+            start,
+            method=self.options["method"],
+            options=self.options["scipy-options"],
+            bounds=self.options["bounds"],
+        )
+        pbar.close()
 
-    #         pbar.update(1)
-    #         pbar.set_description("Least Squares = {:<10.3f} ".format(-val))
+        if self.options["ignore_warnings"]:
+            np.seterr(all=None)
 
-    #         return -val
-
-    #     print("\n{} running {}".format(type(self).__name__, self.kwargs["method"]))
-
-    #     pbars = []
-    #     for pbar_id in range(comm.size):
-    #         pbars.append(tqdm(total=maxiter, ncols=100))
-    #     pbar = pbars[comm.rank]
-    #     for ind in range(comm.size):
-    #         if ind != comm.rank:
-    #             pbars[ind].close()
-
-    #     xhat = optimize.minimize(
-    #         fun,
-    #         start,
-    #         method=self.kwargs["method"],
-    #         options=self.kwargs["scipy-options"],
-    #         bounds=self.kwargs["bounds"],
-    #     )
-    #     pbar.close()
-
-    #     self.results.trace = _enumerated_to_named(xhat.x, self.variables)
-    #     self.results.MAP = self.results.trace.copy()
-    #     self.loglikelihood(self.results.MAP)
-    #     self.results.residuals = copy.deepcopy(self._tmp_residulas)
-    #     self.results.date = self.data["date0"]
-
-    #     return self.results
+        return xhat
 
     # def residuals(self, state):
     #     self.loglikelihood(state)
