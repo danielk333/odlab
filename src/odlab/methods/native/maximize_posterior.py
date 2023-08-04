@@ -42,6 +42,29 @@ class ScipyMaximizePosterior:
         'options': {},
     }
 
+    def distance(self, sim, obs):
+        """Calculates the distance between variable points
+
+        Override this method to include non-standard distance measures
+        and coordinate transforms into posterior evaluation
+        """
+        distances = np.empty(sim.shape, dtype=sim.dtype)
+        for name in sim.dtype.names:
+            distances[name] = obs[name] - sim[name]
+        return distances
+    def distance(self, sim, obs):
+        """Calculates the distances between angles, includes wrapping"""
+        distances = np.empty(sim.shape, dtype=sim.dtype)
+
+        daz = obs["az"] - sim["az"]
+        daz_tmp = np.mod(obs["az"] + 540.0, 360.0) - np.mod(sim["az"] + 540.0, 360.0)
+        inds_ = np.abs(daz) > np.abs(daz_tmp)
+        daz[inds_] = daz_tmp[inds_]
+        distances["el"] = obs["el"] - sim["el"]
+        distances["az"] = daz
+
+        return distances
+
     def __init__(self, data, variables, **kwargs):
         for key in self.REQUIRED:
             if key not in kwargs:
