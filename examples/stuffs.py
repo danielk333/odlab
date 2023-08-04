@@ -13,6 +13,15 @@ import sorts
 import pyorb
 
 
+
+
+
+measurements = [
+    (ForwardModel, [DataFrames]),
+    (ForwardModel, [DataFrames]),
+    (ForwardModel, [DataFrames]),
+]
+
 np.random.seed(89782364)
 
 odlab.profiler.enable('odlab')
