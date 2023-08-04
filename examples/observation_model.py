@@ -52,12 +52,18 @@ print(cameara_model)
 sim_radar_observations = radar_model.evaluate(t, states)
 sim_camera_observations = cameara_model.evaluate(t, states)
 
-fig, axes = plt.subplots(2, 2, figsize=(15, 15))
+fig, axes = plt.subplots(2, 2, figsize=(15, 15), sharex="all")
 
 axes[0, 0].plot(t, sim_radar_observations["r"] * 1e-3)
+axes[0, 0].set_ylabel('Radar two-way range [km]]')
 axes[0, 1].plot(t, sim_radar_observations["v"] * 1e-3)
+axes[0, 1].set_ylabel('Radar two-way velocity [km/s]]')
 
 axes[1, 0].plot(t, sim_camera_observations["az"])
+axes[1, 0].set_xlabel('Time [s]')
+axes[1, 0].set_ylabel('Camera azimuth [deg]]')
 axes[1, 1].plot(t, sim_camera_observations["el"])
+axes[1, 1].set_xlabel('Time [s]')
+axes[1, 1].set_ylabel('Camera elevation [deg]]')
 
 plt.show()

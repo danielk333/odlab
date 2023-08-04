@@ -4,12 +4,13 @@
 
 '''
 
+import numpy as np
+import matplotlib.pyplot as plt
+from astropy.time import Time, TimeDelta
+
 import odlab
 import sorts
 import pyorb
-
-import numpy as np
-import matplotlib.pyplot as plt
 
 
 np.random.seed(89782364)
@@ -28,7 +29,7 @@ state0 = np.array([-7100297.113, -3897715.442, 18568433.707,
                    86.771, -3407.231, 2961.571])
 t = np.linspace(0, 1800/(3600*24), num=10)
 mjd0 = 54952.08
-dates = odlab.times.mjd2npdt(mjd0 + t)
+dates = Time(mjd0 + t, format="mjd", scale="utc")
 params = dict(M0=pyorb.M_earth)
 
 r_err = 1e3

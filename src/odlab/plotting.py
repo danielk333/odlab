@@ -7,8 +7,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .posterior import _named_to_enumerated
-
 
 def autocorrelation(results, **kwargs):
     axes = kwargs.get("axes", None)
