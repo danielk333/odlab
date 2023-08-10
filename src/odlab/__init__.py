@@ -11,7 +11,7 @@ from . import profiling
 from . import times
 from . import methods
 
-from .data import load_source, glob_sources, SOURCES
+from .data import load_source, glob_sources, build_source, SOURCES
 from .instrument_models import source_to_model, get_model, MODELS
 from .profiling import profile, get_profile, print_profile, profile_stop
 from .instrument_models import ForwardModel

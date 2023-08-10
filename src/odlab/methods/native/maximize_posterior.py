@@ -173,6 +173,20 @@ class MaximizeGaussianErrorPosterior:
 
     #     return state_, params
 
+    def residuals(self, state):
+        resids = []
+        states = self.state_generator.get_states(state, self.times)
+
+        for ind, (model, df) in enumerate(zip(self.models, self.dfs)):
+            df_state_inds = self._times_expand_index[self._times_df_map == ind]
+            sim_data = model.evaluate(df["date"], states[:, df_state_inds])
+
+            diffs = {}
+            for var in sim_data:
+                diffs[var] = (df[var].values - sim_data[var])
+            resids.append(diffs)
+        return resids
+
     def loglikelihood(self, state):
         """The loglikelihood function"""
         states = self.state_generator.get_states(state, self.times)
