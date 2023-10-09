@@ -1,3 +1,4 @@
+import pyant
 import sorts
 
 from .models import ForwardModel, register_model
@@ -16,27 +17,26 @@ class Camera(ForwardModel):
 
     def __init__(self, data, **kwargs):
         super().__init__(data, **kwargs)
-        self.data["geo"] = sorts.frames.ITRS_to_geodetic(
-            self.data["st_ecef"][0],
-            self.data["st_ecef"][1],
-            self.data["st_ecef"][2],
+        self.data["ecef_lla"] = pyant.coordinates.cart_to_sph(
+            self.data["st_ecef"],
             degrees=True,
         )
+        self.data["ecef_lla"][0] = 90 - self.data["ecef_lla"][0]
 
     def evaluate(self, t, states, **kwargs):
         """Evaluate forward model"""
         sim_dat = {}
 
-        x = states[:3, :] - self.data["st_ecef"][:3, None]
-        r = sorts.frames.ecef_to_enu(
-            self.data["geo"][0],
-            self.data["geo"][1],
-            self.data["geo"][2],
-            x,
+        rel_ = states.copy()
+        rel_[:3, :] = rel_[:3, :] - self.data["st_ecef"][:3, None]
+        rel_[:3, :] = sorts.frames.ecef_to_enu(
+            lat = self.data["ecef_lla"][1],
+            lon = self.data["ecef_lla"][0],
+            alt = self.data["ecef_lla"][2],
+            ecef = rel_[:3, :],
             degrees=True,
         )
-        azel = sorts.frames.cart_to_sph(r, degrees=True)
-
+        azel = pyant.coordinates.cart_to_sph(rel_[:3, :], degrees=True)
         sim_dat["az"] = azel[0, :]
         sim_dat["el"] = azel[1, :]
 
