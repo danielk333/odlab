@@ -6,6 +6,7 @@ examples/tmp
 
 #vscode
 .vscode
+*.code*
 
 #Vi/vim
 *~

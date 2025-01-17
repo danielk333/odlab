@@ -10,6 +10,7 @@ from . import misc
 from . import profiling
 from . import times
 from . import methods
+from . import statistics
 
 from .methods import POSTERIORS, SOLVERS
 from .data import load_source, glob_sources, build_source, SOURCES
